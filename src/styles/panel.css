@@ -1,0 +1,208 @@
+/**
+ * Panel + layout styles — the blade and its chrome.
+ *
+ * The blade is anchored to the left edge of the transparent window. When open
+ * it slides/grows from x=0; when closed it retracts fully off-screen. The
+ * layered background + inner light edge gives the "extending from the screen"
+ * depth. Actual motion is driven by Framer Motion; these rules define the look.
+ */
+
+.root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none; /* Let clicks pass through empty space */
+}
+
+.root > * {
+  pointer-events: auto; /* Re-enable clicks for the panel itself */
+}
+
+/* The blade itself — a tall rounded-right panel. */
+.blade {
+  position: relative; /* Inside motion wrapper */
+  width: var(--panel-width);
+  display: flex;
+  flex-direction: column;
+  border-top-right-radius: 24px;
+  border-bottom-right-radius: 24px;
+  /* Completely deep black */
+  background: #000000;
+  
+  /* No back shadow and no edges */
+  box-shadow: none;
+  overflow: hidden;
+  border: none;
+  backdrop-filter: blur(20px);
+}
+
+/* Reverse curves (flares) connecting blade to screen edge */
+.flare-top, .flare-bottom {
+  position: absolute;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  z-index: -1;
+  /* Slight blur to match glass, though solid bg-1 usually works fine */
+}
+.flare-top {
+  top: -20px;
+  background: radial-gradient(circle at 100% 0%, transparent 20px, #000000 20px);
+}
+.flare-bottom {
+  bottom: -20px;
+  background: radial-gradient(circle at 100% 100%, transparent 20px, #000000 20px);
+}
+
+
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--pad) var(--pad) 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.header .title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+}
+
+.header .spacer {
+  flex: 1;
+}
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  transition: background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.icon-btn:hover {
+  background: var(--bg-3);
+  color: var(--text-primary);
+}
+
+/* Search */
+.search {
+  margin: 0 var(--pad) 6px;
+  position: relative;
+  z-index: 1;
+}
+.search input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px 0 34px;
+  background: var(--bg-2);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  outline: none;
+  color: var(--text-primary);
+  transition: border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.search input::placeholder {
+  color: var(--text-tertiary);
+}
+.search input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.search .search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+/* Scroll area */
+.list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px var(--pad) var(--pad);
+  position: relative;
+  z-index: 1;
+  scrollbar-width: none; /* Firefox */
+}
+.list::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 14px 4px 8px;
+}
+.section-label:first-child {
+  margin-top: 4px;
+}
+
+/* Empty state */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 60%;
+  gap: 10px;
+  color: var(--text-tertiary);
+  padding: 0 24px;
+}
+.empty .big {
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+.empty .hint {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px var(--pad) var(--pad);
+  border-top: 1px solid var(--divider);
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.3));
+}
+.footer .count {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.footer .spacer {
+  flex: 1;
+}
+.footer .text-btn {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  transition: background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.footer .text-btn:hover {
+  background: var(--bg-3);
+  color: var(--text-primary);
+}
+.footer .text-btn.danger:hover {
+  color: #ff6b6b;
+}
