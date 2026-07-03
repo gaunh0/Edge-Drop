@@ -11,10 +11,11 @@
 import { app, BrowserWindow, protocol, session } from 'electron'
 import { APP_CONFIG, runtime } from './config'
 import { ensureDirs, cleanTemp, PATHS } from '../store/paths'
-import { createWindow, getMainWindow, setInteractive, setVisible, startCursorPoll } from './window'
+import { createWindow, getMainWindow, setInteractive, setVisible, startCursorPoll, stopCursorPoll, stopHeartbeat } from './window'
 import { createTray, registerIncognitoApplier } from './tray'
 import { registerIpc, registerSendListeners } from './ipc'
-import { initState, getWatcher, loadSettings, pushState } from './state'
+import { prewarmDragIcons } from './drag'
+import { initState, getWatcher, loadSettings, pushState, stopStateTimers } from './state'
 import { join } from 'node:path'
 import { existsSync, createReadStream } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -47,6 +48,10 @@ protocol.registerSchemesAsPrivileged([
 // ---- app lifecycle ---------------------------------------------------------
 app.on('before-quit', () => {
   runtime.quitting = true
+  stopCursorPoll()
+  stopHeartbeat()
+  stopStateTimers()
+  getWatcher().stop()
 })
 
 app.whenReady().then(() => {
@@ -66,9 +71,16 @@ app.whenReady().then(() => {
   registerIpc()
   registerSendListeners()
   initState()
+  prewarmDragIcons()
 
   // Reflect incognito setting into the watcher immediately.
   const settings = loadSettings()
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: settings.launchAtLogin,
+      path: app.getPath('exe')
+    })
+  } catch { /* ignore in non-packaged / sandbox */ }
   registerIncognitoApplier((v) => getWatcher().setPaused(v))
   getWatcher().setPaused(settings.incognito)
   pushState.settings(settings)

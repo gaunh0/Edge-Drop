@@ -17,13 +17,15 @@ export interface EdgeApi {
   removeSubitem: (req: DragRequest) => Promise<boolean>
   copyItem: (id: string) => Promise<boolean>
   copySubitem: (req: DragRequest) => Promise<boolean>
+  pasteItem: (id: string) => Promise<boolean>
+  pasteSubitem: (req: DragRequest) => Promise<boolean>
   /**
    * Begin a native OS drag-out. Fire-and-forget: must be called synchronously
    * from the DOM `dragstart` event, and main calls `event.sender.startDrag`.
    */
   startDrag: (req: DragRequest) => void
   addFiles: (paths: string[]) => Promise<import('./types').ClipboardItemDto[]>
-  mergeItems: (sourceId: string, targetId: string) => Promise<boolean>
+  mergeItems: (sourceId: string, targetId: string) => Promise<import('./types').MergeResult>
   splitItem: (req: import('./types').DragRequest) => Promise<boolean>
   updateSettings: (patch: Partial<Settings>) => Promise<Settings>
   setInteractive: (value: boolean) => Promise<void>
@@ -33,7 +35,9 @@ export interface EdgeApi {
   onItems: (cb: (items: import('./types').ClipboardItemDto[]) => void) => () => void
   onSettings: (cb: (settings: Settings) => void) => () => void
   onToggle: (cb: () => void) => () => void
+  onOpenSettings: (cb: () => void) => () => void
   onDragEnd: (cb: () => void) => () => void
   onInternalDrop: (cb: (pos: { x: number; y: number }) => void) => () => void
   onCursorEdge: (cb: (data: { x: number; y: number; inEdge: boolean; inZone: boolean }) => void) => () => void
+  onToast: (cb: (toast: { id: string; message: string; tone: 'info' | 'error' }) => void) => () => void
 }

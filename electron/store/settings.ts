@@ -16,6 +16,10 @@ function merge(base: Settings, patch: Partial<Settings>): Settings {
   // Clamp the numeric slider into its valid range.
   out.hotZoneHeight = Math.min(0.6, Math.max(0.2, out.hotZoneHeight))
   out.historyLimit = Math.min(2000, Math.max(50, Math.round(out.historyLimit)))
+  out.autoDeleteHours = Math.max(0, Number(out.autoDeleteHours) || 0)
+  if (out.uiStyle !== 'modern' && out.uiStyle !== 'compact') {
+    out.uiStyle = 'modern'
+  }
   return out
 }
 

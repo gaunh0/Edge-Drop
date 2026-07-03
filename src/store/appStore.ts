@@ -11,6 +11,13 @@ import { edge } from '../lib/edge'
 import type { ClipboardItemDto, Settings } from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
 
+/** A transient user-facing notice shown as a toast. */
+export interface ToastMsg {
+  id: string
+  message: string
+  tone: 'info' | 'error'
+}
+
 interface AppState {
   items: ClipboardItemDto[]
   settings: Settings
@@ -26,6 +33,8 @@ interface AppState {
   dragActive: boolean
   /** True if the active drag originated from within the app itself. Stores the drag request (which item/sub-item). */
   internalDragReq: import('../../shared/types').DragRequest | null
+  /** Active toasts (auto-dismissed after a short delay). */
+  toasts: ToastMsg[]
 
   /* hydration + sync */
   hydrate: () => Promise<void>
@@ -39,11 +48,17 @@ interface AppState {
   setDragActive: (active: boolean) => void
   setInternalDragReq: (req: import('../../shared/types').DragRequest | null) => void
 
+  /* toasts */
+  pushToast: (toast: ToastMsg) => void
+  dismissToast: (id: string) => void
+
   /* mutations (delegate to main) */
   togglePin: (id: string, pinned: boolean) => Promise<void>
   remove: (id: string) => Promise<void>
   clear: () => Promise<void>
   copy: (id: string) => Promise<void>
+  paste: (id: string) => Promise<void>
+  pasteSubitem: (req: import('../../shared/types').DragRequest) => Promise<void>
   patchSettings: (patch: Partial<Settings>) => Promise<void>
 }
 
@@ -56,6 +71,7 @@ export const useStore = create<AppState>((set, get) => ({
   settingsOpen: false,
   dragActive: false,
   internalDragReq: null,
+  toasts: [],
 
   async hydrate() {
     const { items, settings } = await edge.loadState()
@@ -70,8 +86,23 @@ export const useStore = create<AppState>((set, get) => ({
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setDragActive: (dragActive) => set({ dragActive }),
   setInternalDragReq: (internalDragReq) => {
-    set({ internalDragReq })
+    if (internalDragReq === null) {
+      set({ internalDragReq: null, dragActive: false })
+    } else {
+      set({ internalDragReq })
+    }
     edge.setInternalDrag(!!internalDragReq)
+  },
+
+  pushToast: (toast) => {
+    set({ toasts: [...get().toasts, toast] })
+    // Auto-dismiss after 2.6s. Errors linger slightly longer for readability.
+    const ttl = toast.tone === 'error' ? 3400 : 2600
+    window.setTimeout(() => get().dismissToast(toast.id), ttl)
+  },
+
+  dismissToast: (id) => {
+    set({ toasts: get().toasts.filter((t) => t.id !== id) })
   },
 
   async togglePin(id, pinned) {
@@ -96,6 +127,14 @@ export const useStore = create<AppState>((set, get) => ({
 
   async copy(id) {
     await edge.copyItem(id)
+  },
+
+  async paste(id) {
+    await edge.pasteItem(id)
+  },
+
+  async pasteSubitem(req) {
+    await edge.pasteSubitem(req)
   },
 
   async patchSettings(patch) {

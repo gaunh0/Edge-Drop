@@ -19,6 +19,7 @@ export default function App() {
   const hydrate = useStore((s) => s.hydrate)
   const setItems = useStore((s) => s.setItems)
   const setSettings = useStore((s) => s.setSettings)
+  const pushToast = useStore((s) => s.pushToast)
   const settings = useStore((s) => s.settings)
 
   // Drive the edge open/close behavior.
@@ -29,17 +30,25 @@ export default function App() {
     void hydrate()
     const offItems = edge.onItems((items) => setItems(items))
     const offSettings = edge.onSettings((next) => setSettings(next))
+    const offToast = edge.onToast((t) => pushToast(t))
     const offToggle = edge.onToggle(() => {
       const next = !useStore.getState().open
       useStore.getState().setOpen(next)
       edge.setInteractive(next)
     })
+    const offOpenSettings = edge.onOpenSettings(() => {
+      useStore.getState().setOpen(true)
+      useStore.getState().setSettingsOpen(true)
+      edge.setInteractive(true)
+    })
     return () => {
       offItems()
       offSettings()
+      offToast()
       offToggle()
+      offOpenSettings()
     }
-  }, [hydrate, setItems, setSettings])
+  }, [hydrate, setItems, setSettings, pushToast])
 
   // Apply theme whenever settings change.
   useEffect(() => {

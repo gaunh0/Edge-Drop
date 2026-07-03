@@ -5,12 +5,56 @@
  * renderer calls them through the typed preload bridge, so a signature mismatch
  * is a compile-time error rather than a runtime one.
  */
-import { ipcMain, clipboard, nativeImage } from 'electron'
+import { app, ipcMain, clipboard, nativeImage } from 'electron'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { execFile } from 'node:child_process'
+import { PATHS } from '../store/paths'
 import { type InvokeMap, type InvokeChannel, type SendMap, type SendChannel } from '../../shared/ipc'
 import { getStore, loadSettings, saveSettings, pushState, addFiles, getWatcher } from './state'
+import { getMainWindow } from './window'
 import { setInteractive } from './window'
 import { startDragOut, resolveDragData } from './drag'
-import type { ItemData } from '../../shared/types'
+import { buildFileListBuffer, CF_FILE_LIST } from '../clipboard/formats'
+import type { ItemData, MergeResult } from '../../shared/types'
+
+/** Fire a transient toast to the renderer (best-effort; renderer may be closed). */
+function toast(message: string, tone: 'info' | 'error' = 'info'): void {
+  const win = getMainWindow()
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('ui:toast', { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, message, tone })
+  }
+}
+
+/** Simulate pressing Ctrl+V via PowerShell after returning focus to the previous active window. */
+function simulatePaste(): void {
+  execFile('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')"
+  ], (err) => {
+    if (err) console.error('[Main] simulatePaste error:', err)
+  })
+}
+
+/**
+ * Write file *references* onto the Windows clipboard (not path strings).
+ *
+ * `FileNameW` is the format Explorer/Word/every Windows app reads for a
+ * "copy these files" gesture — without it, paste produces literal path text.
+ * We also write plain text as a fallback so pure-text targets still get something.
+ */
+function writeFileListToClipboard(paths: string[]): void {
+  clipboard.clear()
+  try {
+    clipboard.writeBuffer(CF_FILE_LIST, buildFileListBuffer(paths))
+  } catch {
+    /* writeBuffer can throw for unregistered formats on some platforms; the
+       text fallback below still lets text-only targets work. */
+  }
+  clipboard.writeText(paths.join('\r\n'))
+}
 
 /**
  * Type-checked registration helper: guarantees the handler's return matches the
@@ -76,19 +120,24 @@ export function registerIpc(): void {
 
     let wrote = false
     if (dto.data.kind === 'files' && req.paths && req.paths.length > 0) {
-      // Electron has no public files-write API; fall back to paths as text,
-      // mirroring writeItemToClipboard's behaviour for whole file items.
-      clipboard.clear()
-      clipboard.writeText(req.paths.join('\r\n'))
+      // Write real file references so pasting into Explorer copies the file,
+      // not a path string.
+      writeFileListToClipboard(req.paths)
       wrote = true
     } else if (dto.data.kind === 'image-collection' && req.imageId) {
       const img = dto.data.images.find((i) => i.imageId === req.imageId)
-      if (img && img.preview) {
-        const native = nativeImage.createFromDataURL(img.preview)
-        if (!native.isEmpty()) {
-          clipboard.clear()
-          clipboard.writeImage(native)
+      if (img) {
+        const src = getStore().getImagePath(img.imageId, img.ext)
+        if (src && existsSync(src)) {
+          writeFileListToClipboard([src])
           wrote = true
+        }
+        if (img.preview) {
+          const native = nativeImage.createFromDataURL(img.preview)
+          if (!native.isEmpty()) {
+            if (!wrote) clipboard.clear()
+            try { clipboard.writeImage(native); wrote = true } catch {}
+          }
         }
       }
     }
@@ -104,8 +153,87 @@ export function registerIpc(): void {
     return true
   })
 
+  handle('item:paste', (id) => {
+    const item = getStore().get(id)
+    console.log('[IPC] item:paste id=', id, 'found=', !!item)
+    if (!item) return false
+
+    const watcher = getWatcher()
+    watcher.setPaused(true)
+
+    try {
+      writeItemToClipboard(item.data)
+      console.log('[IPC] item:paste wrote to clipboard, kind=', item.data.kind)
+
+      // Close panel via toggle so focus returns to the user's active input/text box
+      pushState.togglePanel()
+
+      // Wait 200ms for OS focus to settle, then simulate Ctrl+V
+      setTimeout(() => {
+        simulatePaste()
+      }, 200)
+    } finally {
+      setTimeout(() => {
+        watcher.setPaused(loadSettings().incognito)
+      }, 350)
+    }
+
+    return true
+  })
+
+  handle('item:paste-subitem', (req) => {
+    const dto = getStore().toDto().find((d) => d.id === req.id)
+    if (!dto) return false
+
+    const watcher = getWatcher()
+    watcher.setPaused(true)
+
+    try {
+      let wrote = false
+      if (dto.data.kind === 'files' && req.paths && req.paths.length > 0) {
+        writeFileListToClipboard(req.paths)
+        wrote = true
+      } else if (dto.data.kind === 'image-collection' && req.imageId) {
+        const img = dto.data.images.find((i) => i.imageId === req.imageId)
+        if (img) {
+          const src = getStore().getImagePath(img.imageId, img.ext)
+          if (src && existsSync(src)) {
+            writeFileListToClipboard([src])
+            wrote = true
+          }
+          if (img.preview) {
+            const native = nativeImage.createFromDataURL(img.preview)
+            if (!native.isEmpty()) {
+              if (!wrote) clipboard.clear()
+              try { clipboard.writeImage(native); wrote = true } catch {}
+            }
+          }
+        }
+      }
+
+      if (!wrote) return false
+
+      pushState.togglePanel()
+
+      setTimeout(() => {
+        simulatePaste()
+      }, 200)
+    } finally {
+      setTimeout(() => {
+        watcher.setPaused(loadSettings().incognito)
+      }, 350)
+    }
+
+    return true
+  })
+
   handle('item:add-files', (paths) => {
-    addFiles(paths)
+    const result = addFiles(paths)
+    // If a large drop was split into several stacks, let the user know why
+    // they suddenly see multiple items instead of one bundle.
+    if (result.stacksCreated > 1) {
+      toast(`Split into ${result.stacksCreated} stacks (max 10 each)`, 'info')
+    }
     return getStore().toDto()
   })
 
@@ -116,9 +244,16 @@ export function registerIpc(): void {
   })
 
   handle('item:merge', (sourceId, targetId) => {
-    const success = getStore().merge(sourceId, targetId)
-    if (success) pushState.items()
-    return success
+    const result: MergeResult = getStore().merge(sourceId, targetId)
+    if (result.ok) {
+      pushState.items()
+    } else if (result.reason === 'full') {
+      toast(result.message || 'Collection is full (10 max)', 'info')
+    } else if (result.reason === 'incompatible') {
+      toast(result.message || 'Cannot combine different item types', 'info')
+    }
+    // 'notfound' fails silently
+    return result
   })
 
   handle('item:split', (req) => {
@@ -131,6 +266,14 @@ export function registerIpc(): void {
 
   handle('settings:update', (patch) => {
     const next = saveSettings(patch)
+    if (patch.launchAtLogin !== undefined) {
+      try {
+        app.setLoginItemSettings({
+          openAtLogin: next.launchAtLogin,
+          path: app.getPath('exe')
+        })
+      } catch { /* ignore */ }
+    }
     pushState.settings(next)
     return next
   })
@@ -190,26 +333,59 @@ export function writeItemToClipboard(data: ItemData): void {
   switch (data.kind) {
     case 'text':
       clipboard.clear()
-      clipboard.writeText(data.text)
-      if (data.html) clipboard.writeHTML(data.html)
+      clipboard.write({ text: data.text, html: data.html })
       break
     case 'image': {
       const dto = getStore().toDto().find(
         (d) => d.data.kind === 'image' && d.data.imageId === data.imageId
       )
       if (dto && dto.data.kind === 'image') {
+        const src = getStore().getImagePath(dto.data.imageId, dto.data.ext)
+        let wrote = false
+        if (src && existsSync(src)) {
+          writeFileListToClipboard([src])
+          wrote = true
+        }
         const img = nativeImage.createFromDataURL(dto.data.preview)
         if (!img.isEmpty()) {
-          clipboard.clear()
-          clipboard.writeImage(img)
+          if (!wrote) clipboard.clear()
+          try { clipboard.writeImage(img) } catch {}
+        }
+      }
+      break
+    }
+    case 'image-collection': {
+      // Copy all image file references of the collection onto the clipboard
+      // so pasting into Explorer / Word / Slack copies all images in the group.
+      const dto = getStore().toDto().find(
+        (d) => d.data.kind === 'image-collection' && d.data.images[0]
+      )
+      if (dto && dto.data.kind === 'image-collection') {
+        const paths: string[] = []
+        for (const img of dto.data.images) {
+          const src = getStore().getImagePath(img.imageId, img.ext)
+          if (existsSync(src)) paths.push(src)
+        }
+        if (paths.length > 0) {
+          writeFileListToClipboard(paths)
+        }
+        // Also attempt to write the primary image bitmap if possible for image-only paste targets
+        const first = dto.data.images[0]
+        const img = nativeImage.createFromDataURL(first.preview)
+        if (!img.isEmpty()) {
+          try {
+            clipboard.writeImage(img)
+          } catch {
+            /* ignore if format conflicts with file list on some systems */
+          }
         }
       }
       break
     }
     case 'files':
-      // Electron has no public files-write API; fall back to paths as text.
-      clipboard.clear()
-      clipboard.writeText(data.paths.join('\r\n'))
+      // Write real file references so pasting into Explorer copies the file,
+      // not a path string.
+      writeFileListToClipboard(data.paths)
       break
   }
 }

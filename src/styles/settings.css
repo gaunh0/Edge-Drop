@@ -1,144 +1,122 @@
-/** Settings sheet styling. */
-.settings-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(6px);
-  display: grid;
-  place-items: center;
-  z-index: 20;
-  padding: 18px;
-}
-
-.settings-sheet {
-  width: 100%;
-  max-height: 86%;
+/** Simple, Minimalist, High-Legibility Settings UI matching Edge-Drop */
+.settings-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
-  background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
-  border: 1px solid var(--edge-strong);
-  border-radius: 18px;
-  box-shadow: var(--shadow-blade);
-  padding: 4px;
+  overflow-x: hidden;
+  padding: 6px var(--pad) 28px;
+  scrollbar-width: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.settings-list::-webkit-scrollbar {
+  display: none;
 }
 
-.settings-head {
+.setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 12px 8px;
-  font-weight: 600;
+  gap: 18px;
+  padding: 14px 4px;
+}
+.setting-row.vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.setting-title {
   font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.01em;
 }
 
-.settings-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 6px 14px 16px;
+.setting-desc {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: #a1a1aa;
+  line-height: 1.45;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.field-label {
-  font-size: 12px;
-  color: var(--text-secondary);
+.setting-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 4px;
+  flex-shrink: 0;
 }
 
-.swatches {
+/* Minimalist Pill Selector (Replaces Sliders!) */
+.setting-pills {
   display: flex;
-  gap: 10px;
-}
-.swatch {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  transition: transform var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
-}
-.swatch:hover {
-  transform: scale(1.1);
-}
-.swatch.active {
-  border-color: rgba(255, 255, 255, 0.9);
-}
-
-.segmented {
-  display: flex;
-  background: var(--bg-0);
-  border: 1px solid var(--divider);
-  border-radius: 10px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   padding: 3px;
-  gap: 3px;
+  gap: 4px;
 }
-.segmented button {
+
+.pill {
   flex: 1;
   padding: 7px 0;
-  border-radius: 7px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  transition: background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #a1a1aa;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-font-smoothing: antialiased;
 }
-.segmented button.active {
-  background: var(--bg-3);
-  color: var(--text-primary);
+.pill:hover:not(.active) {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+.pill.active {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
-input[type='range'] {
-  -webkit-appearance: none;
-  width: 100%;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--bg-0);
-  outline: none;
-}
-input[type='range']::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent);
-  cursor: pointer;
-}
-
-.toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-.toggle {
+/* Sleek Minimalist Toggle Switch */
+.setting-toggle {
+  flex-shrink: 0;
   width: 40px;
-  height: 22px;
+  height: 24px;
   border-radius: 999px;
-  background: var(--bg-0);
-  border: 1px solid var(--divider);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   position: relative;
-  transition: background var(--dur-fast) var(--ease-out);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
-.toggle .knob {
+.toggle-thumb {
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: 3px;
+  left: 3px;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--text-secondary);
-  transition: transform var(--dur-fast) var(--ease-spring),
-    background var(--dur-fast) var(--ease-out);
+  background: #d4d4d8;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease;
 }
-.toggle.on {
-  background: var(--accent);
-  border-color: transparent;
+.setting-toggle.checked {
+  background: #ffffff;
+  border-color: #ffffff;
 }
-.toggle.on .knob {
-  transform: translateX(18px);
-  background: #fff;
+.setting-toggle.checked .toggle-thumb {
+  transform: translateX(16px);
+  background: #000000;
 }

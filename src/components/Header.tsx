@@ -1,76 +1,53 @@
-/** Panel header: animated search + settings toggle. */
-import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+/** Panel header: title + settings toggle. */
+import { motion } from 'framer-motion'
 import { useStore } from '../store/appStore'
-import { GearIcon, SearchIcon, CloseIcon } from './icons'
+import { GearIcon, CloseIcon } from './icons'
 
 export function Header() {
-  const query = useStore((s) => s.query)
-  const setQuery = useStore((s) => s.setQuery)
   const setSettingsOpen = useStore((s) => s.setSettingsOpen)
   const settingsOpen = useStore((s) => s.settingsOpen)
 
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (isSearchOpen) {
-      inputRef.current?.focus()
-    } else {
-      setQuery('')
-    }
-  }, [isSearchOpen, setQuery])
-
   return (
-    <div className="header" style={{ display: 'flex', gap: 10, width: '100%', alignItems: 'center' }}>
-      <motion.div
-        layout
-        className="search-container"
-        style={{
-          display: 'flex',
-          background: 'var(--bg-2)',
-          borderRadius: 999,
-          height: 30,
-          overflow: 'hidden',
-          flex: isSearchOpen ? 1 : 'none',
-          width: isSearchOpen ? 'auto' : 30
-        }}
-        transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-      >
-        <button
-          onClick={() => setIsSearchOpen(true)}
-          style={{ width: 30, height: 30, background: 'transparent', border: 'none', color: 'var(--text-secondary)', display: 'grid', placeItems: 'center', flexShrink: 0, cursor: 'pointer' }}
-        >
-          <SearchIcon width={14} height={14} />
-        </button>
-        <AnimatePresence>
-          {isSearchOpen && (
-            <motion.input
-              ref={inputRef}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              type="text"
-              placeholder="Search clipboard..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onBlur={() => { if (!query) setIsSearchOpen(false) }}
-              style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', paddingRight: 10 }}
-              spellCheck={false}
-            />
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      <motion.div layout style={{ flex: isSearchOpen ? 0 : 1 }} />
+    <div className="header" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', height: 40, padding: '0 14px 0 6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 6 }}>
+        <img
+          src="./logo-white.png"
+          alt="Edge-Drop"
+          style={{
+            height: 20,
+            width: 'auto',
+            objectFit: 'contain',
+            userSelect: 'none',
+            pointerEvents: 'none',
+            display: 'block',
+            imageRendering: 'auto'
+          }}
+        />
+        {settingsOpen && (
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#8e8e93', letterSpacing: '0.01em' }}>
+            / Settings
+          </span>
+        )}
+      </div>
 
       <motion.button
+        type="button"
         layout
         className={`icon-btn${settingsOpen ? ' active' : ''}`}
         title={settingsOpen ? 'Close Settings' : 'Settings'}
         onClick={() => setSettingsOpen(!settingsOpen)}
-        style={{ color: settingsOpen ? 'var(--accent)' : undefined, flexShrink: 0 }}
+        style={{
+          color: '#ffffff',
+          background: 'transparent',
+          border: 'none',
+          boxShadow: 'none',
+          flexShrink: 0,
+          cursor: 'pointer',
+          width: 32,
+          height: 32,
+          display: 'grid',
+          placeItems: 'center'
+        }}
       >
         {settingsOpen ? <CloseIcon /> : <GearIcon />}
       </motion.button>

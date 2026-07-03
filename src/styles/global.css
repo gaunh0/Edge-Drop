@@ -48,6 +48,15 @@ body {
    file sub-rows. Scope it to img/a only, and let .item-main / .file-row
    re-enable dragging explicitly. */
 img,
+svg,
+canvas,
+video {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: high-quality;
+  shape-rendering: geometricPrecision;
+}
+
+img,
 a {
   -webkit-user-drag: none;
 }

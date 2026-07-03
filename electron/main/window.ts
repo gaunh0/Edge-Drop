@@ -26,6 +26,7 @@ import { BrowserWindow, screen, shell } from 'electron'
 import { join } from 'node:path'
 import { APP_CONFIG } from './config'
 import { runtime } from './config'
+import { PATHS } from '../store/paths'
 
 export const PANEL_WIDTH = 384
 /** Visual width of the blade when collapsed (only used by the renderer). */
@@ -60,12 +61,14 @@ export function setInteractive(value: boolean): void {
   if (value) {
     // Panel is open: disable click-through so user can interact.
     mainWindow.setIgnoreMouseEvents(false)
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
   } else {
     // Panel is closed: full click-through, no forwarding needed.
     // Cursor edge detection is done by the main-process poll (startCursorPoll)
     // via screen.getCursorScreenPoint() + IPC, so forward:true is not required
     // and omitting it ensures Windows passes ALL mouse clicks to apps beneath.
     mainWindow.setIgnoreMouseEvents(true, { forward: false })
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
   }
 }
 
@@ -76,12 +79,13 @@ export function setInteractive(value: boolean): void {
  * working.
  */
 let cursorPollTimer: ReturnType<typeof setInterval> | null = null
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null
 let lastEdgeState = false
 
 export function startCursorPoll(): void {
   if (cursorPollTimer !== null) return
   cursorPollTimer = setInterval(() => {
-    if (!mainWindow || !mainWindow.isVisible()) return
+    if (runtime.quitting || !mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return
 
     const pt = screen.getCursorScreenPoint()
     const display = screen.getDisplayNearestPoint(pt)
@@ -106,14 +110,16 @@ export function startCursorPoll(): void {
     // the right past 60px — so it never learned the cursor had left and the
     // blade refused to retract horizontally. When the panel is closed and the
     // cursor is away from the edge we stop streaming to avoid needless IPC.
-    if (clientX <= 60 || interactive || newState !== lastEdgeState) {
+    if (clientX <= 450 || interactive || newState !== lastEdgeState) {
       lastEdgeState = newState
-      mainWindow.webContents.send('window:cursor-edge', {
-        x: clientX,
-        y: clientY,
-        inEdge,
-        inZone: true
-      })
+      if (!mainWindow.webContents.isDestroyed()) {
+        mainWindow.webContents.send('window:cursor-edge', {
+          x: clientX,
+          y: clientY,
+          inEdge,
+          inZone: true
+        })
+      }
     }
   }, 16)
 }
@@ -141,6 +147,7 @@ export function createWindow(): BrowserWindow {
   const { x, y, width, height } = edgeGeometry()
 
   mainWindow = new BrowserWindow({
+    icon: PATHS.icon(),
     x,
     y,
     width: PANEL_WIDTH,
@@ -184,7 +191,7 @@ export function createWindow(): BrowserWindow {
 
   // Respect OS-level always-on-top reordering.
   mainWindow.on('focus', () => {
-    if (interactive) mainWindow?.setAlwaysOnTop(true, 'screen-saver')
+    mainWindow?.setAlwaysOnTop(true, 'screen-saver')
   })
 
   // Open external links in the default browser.
@@ -201,7 +208,9 @@ export function createWindow(): BrowserWindow {
   }
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow?.show()
+    if (!mainWindow) return
+    mainWindow.show()
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
   })
 
   mainWindow.webContents.on('console-message', (_event, _level, message, line, sourceId) => {
@@ -217,7 +226,39 @@ export function createWindow(): BrowserWindow {
   // Create the detector window for OS drag-in awareness.
   createDetectorWindow(x, y, width, height)
 
+  // Periodic heartbeat: Windows window managers and fullscreen apps often re-order
+  // transparent floating windows behind other applications when inactive.
+  // Re-asserting always-on-top at 'screen-saver' level every 3s prevents losing edge hover.
+  if (heartbeatTimer !== null) clearInterval(heartbeatTimer)
+  heartbeatTimer = setInterval(() => {
+    if (runtime.quitting) return
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+      mainWindow.setAlwaysOnTop(true, 'screen-saver')
+    }
+    if (detectorWindow && !detectorWindow.isDestroyed() && detectorWindow.isVisible()) {
+      detectorWindow.setAlwaysOnTop(true, 'normal')
+    }
+  }, 3000)
+
   return mainWindow
+}
+
+export function stopHeartbeat(): void {
+  if (heartbeatTimer !== null) {
+    clearInterval(heartbeatTimer)
+    heartbeatTimer = null
+  }
+}
+
+/** Toggle the panel between shown (always on top) and fully hidden. */
+export function setVisible(visible: boolean): void {
+  if (!mainWindow) return
+  if (visible) {
+    mainWindow.showInactive()
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
+  } else {
+    mainWindow.hide()
+  }
 }
 
 /**
@@ -229,7 +270,7 @@ export function createWindow(): BrowserWindow {
  * drag-event absorber; its inline script still forwards file drags to the main
  * window via `window.edge.setInteractive(true)` should it ever receive one.
  */
-function createDetectorWindow(x: number, y: number, w: number, h: number): void {
+function createDetectorWindow(x: number, y: number, _w: number, h: number): void {
   // Minimal HTML: the detector uses the preload bridge (window.edge) to send IPC.
   // It listens for dragenter/dragover/drop on the document and sends a signal
   // when Files are detected.
@@ -314,11 +355,4 @@ function createDetectorWindow(x: number, y: number, w: number, h: number): void 
       e.preventDefault()
     }
   })
-}
-
-/** Toggle the panel between shown (always on top) and fully hidden. */
-export function setVisible(visible: boolean): void {
-  if (!mainWindow) return
-  if (visible) mainWindow.showInactive()
-  else mainWindow.hide()
 }

@@ -6,85 +6,171 @@ export function Settings() {
   const patch = useStore((s) => s.patchSettings)
 
   return (
-    <div className="settings-body" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
-      <h2 style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 20, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Preferences</h2>
+    <div className="settings-list">
       
-      <Field label={`Trigger area height — ${Math.round(settings.hotZoneHeight * 100)}%`}>
-        <input
-          type="range"
-          min={0.2}
-          max={0.8}
-          step={0.05}
-          value={settings.hotZoneHeight}
-          onChange={(e) => patch({ hotZoneHeight: Number(e.target.value) })}
+      {/* Clear unpinned on restart */}
+      <div className="setting-row">
+        <div className="setting-info">
+          <div className="setting-title">Clear unpinned on restart</div>
+          <div className="setting-desc">Wipe unpinned items whenever device restarts</div>
+        </div>
+        <Toggle
+          checked={settings.clearUnpinnedOnRestart}
+          onChange={(v) => patch({ clearUnpinnedOnRestart: v })}
         />
-      </Field>
+      </div>
 
-      <Field label={`Complete pop-up panel size — ${Math.round((settings.panelHeight || 0.6) * 100)}%`}>
-        <input
-          type="range"
-          min={0.4}
-          max={0.9}
-          step={0.05}
-          value={settings.panelHeight || 0.6}
-          onChange={(e) => patch({ panelHeight: Number(e.target.value) })}
+      <div className="setting-divider" />
+
+      {/* Auto-delete timer */}
+      <div className="setting-row vertical">
+        <div className="setting-info">
+          <div className="setting-title">Auto-delete timer</div>
+          <div className="setting-desc">Automatically purge copied items (preserves Pinned)</div>
+        </div>
+        <div className="setting-pills">
+          {[
+            { label: 'Never', val: 0 },
+            { label: '1h', val: 1 },
+            { label: '6h', val: 6 },
+            { label: '24h', val: 24 },
+            { label: '7d', val: 168 }
+          ].map((opt) => (
+            <button
+              key={opt.val}
+              className={`pill ${settings.autoDeleteHours === opt.val ? 'active' : ''}`}
+              onClick={() => patch({ autoDeleteHours: opt.val })}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="setting-divider" />
+
+      {/* History capacity */}
+      <div className="setting-row vertical">
+        <div className="setting-info">
+          <div className="setting-title">History capacity</div>
+          <div className="setting-desc">Maximum unpinned items stored in history</div>
+        </div>
+        <div className="setting-pills">
+          {[
+            { label: '100', val: 100 },
+            { label: '250', val: 250 },
+            { label: '500', val: 500 },
+            { label: '1000', val: 1000 }
+          ].map((opt) => (
+            <button
+              key={opt.val}
+              className={`pill ${settings.historyLimit === opt.val ? 'active' : ''}`}
+              onClick={() => patch({ historyLimit: opt.val })}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="setting-divider" />
+
+      {/* Edge trigger height */}
+      <div className="setting-row vertical">
+        <div className="setting-info">
+          <div className="setting-title">Edge trigger height</div>
+          <div className="setting-desc">Hover area size on screen edge</div>
+        </div>
+        <div className="setting-pills">
+          {[
+            { label: 'Small', val: 0.25 },
+            { label: 'Medium', val: 0.4 },
+            { label: 'Large', val: 0.6 }
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              className={`pill ${Math.abs(settings.hotZoneHeight - opt.val) < 0.08 ? 'active' : ''}`}
+              onClick={() => patch({ hotZoneHeight: opt.val })}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="setting-divider" />
+
+      {/* Panel height */}
+      <div className="setting-row vertical">
+        <div className="setting-info">
+          <div className="setting-title">Panel height</div>
+          <div className="setting-desc">Vertical size of the clipboard panel</div>
+        </div>
+        <div className="setting-pills">
+          {[
+            { label: 'Small', val: 0.5 },
+            { label: 'Medium', val: 0.65 },
+            { label: 'Large', val: 0.8 }
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              className={`pill ${Math.abs((settings.panelHeight || 0.6) - opt.val) < 0.08 ? 'active' : ''}`}
+              onClick={() => patch({ panelHeight: opt.val })}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="setting-divider" />
+
+      {/* Incognito mode */}
+      <div className="setting-row">
+        <div className="setting-info">
+          <div className="setting-title">Incognito mode</div>
+          <div className="setting-desc">Temporarily pause recording new clipboard items</div>
+        </div>
+        <Toggle
+          checked={settings.incognito}
+          onChange={(v) => patch({ incognito: v })}
         />
-      </Field>
+      </div>
 
-              <Field label={`History limit — ${settings.historyLimit} items`}>
-                <input
-                  type="range"
-                  min={50}
-                  max={2000}
-                  step={50}
-                  value={settings.historyLimit}
-                  onChange={(e) => patch({ historyLimit: Number(e.target.value) })}
-                />
-              </Field>
+      <div className="setting-divider" />
 
-              <Toggle
-                label="Incognito (pause capture)"
-                checked={settings.incognito}
-                onChange={(v) => patch({ incognito: v })}
-              />
-              <Toggle
-                label="Reduce motion"
-                checked={settings.reduceMotion}
-                onChange={(v) => patch({ reduceMotion: v })}
-              />
-              <Toggle
-                label="Launch at login"
-                checked={settings.launchAtLogin}
-                onChange={(v) => patch({ launchAtLogin: v })}
-              />
+      {/* Launch at login */}
+      <div className="setting-row">
+        <div className="setting-info">
+          <div className="setting-title">Launch at login</div>
+          <div className="setting-desc">Start silently in background when computer boots</div>
+        </div>
+        <Toggle
+          checked={settings.launchAtLogin}
+          onChange={(v) => patch({ launchAtLogin: v })}
+        />
+      </div>
+
     </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="field">
-      <span className="field-label">{label}</span>
-      {children}
-    </label>
   )
 }
 
 function Toggle({
-  label,
   checked,
   onChange
 }: {
-  label: string
   checked: boolean
   onChange: (v: boolean) => void
 }) {
   return (
-    <div className="toggle-row" onClick={() => onChange(!checked)}>
-      <span>{label}</span>
-      <button className={`toggle${checked ? ' on' : ''}`} role="switch" aria-checked={checked}>
-        <span className="knob" />
-      </button>
-    </div>
+    <button
+      type="button"
+      className={`setting-toggle${checked ? ' checked' : ''}`}
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="toggle-thumb" />
+    </button>
   )
 }

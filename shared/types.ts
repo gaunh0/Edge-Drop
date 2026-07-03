@@ -8,11 +8,14 @@
  * renderer receives the bytes inline as a data URL so the UI never blocks on disk I/O.
  */
 
+/** Maximum number of sub-items that may live in a single stack/bundle. */
+export const MAX_STACK = 10
+
 /** Discriminated union describing the payload of a clipboard item. */
 export type ItemData =
   | { kind: 'text'; text: string; html?: string; isUrl: boolean; isColor?: boolean }
-  | { kind: 'image'; imageId: string; width: number; height: number; bytes: number }
-  | { kind: 'image-collection'; images: { imageId: string; width: number; height: number; bytes: number }[] }
+  | { kind: 'image'; imageId: string; width: number; height: number; bytes: number; ext?: string }
+  | { kind: 'image-collection'; images: { imageId: string; width: number; height: number; bytes: number; ext?: string }[] }
   | { kind: 'files'; paths: string[] }
 
 export type ItemKind = ItemData['kind']
@@ -32,13 +35,26 @@ export interface ClipboardItem {
   pinned: boolean
 }
 
+/**
+ * Display metadata for a single file inside a `files` bundle.
+ * Computed by main from the path/extension + a stat() call; the internal
+ * `ItemData.files` model stays a plain path list so drag/merge/split logic
+ * is untouched, while the renderer gets what it needs to render richly.
+ */
+export interface FileEntry {
+  name: string
+  ext: string
+  size: number
+  isImage: boolean
+}
+
 /** Payload sent over IPC: same as ClipboardItem but with inline image previews. */
 export interface ClipboardItemDto extends Omit<ClipboardItem, 'data'> {
   data:
   | { kind: 'text'; text: string; html?: string; isUrl: boolean; isColor?: boolean }
-  | { kind: 'image'; imageId: string; width: number; height: number; bytes: number; preview: string }
-  | { kind: 'image-collection'; images: { imageId: string; width: number; height: number; bytes: number; preview: string }[] }
-  | { kind: 'files'; paths: string[]; previews?: string[] }
+  | { kind: 'image'; imageId: string; width: number; height: number; bytes: number; preview: string; ext?: string }
+  | { kind: 'image-collection'; images: { imageId: string; width: number; height: number; bytes: number; preview: string; ext?: string }[] }
+  | { kind: 'files'; paths: string[]; previews?: string[]; entries?: FileEntry[] }
 }
 
 /** Section the renderer groups items into. */
@@ -58,6 +74,16 @@ export interface DragRequest {
   splitPlacement?: 'before' | 'after'
 }
 
+/**
+ * Outcome of a merge attempt. `reason` tells the renderer *why* it failed so it
+ * can show a precise message (e.g. "collection full" vs "can't mix types").
+ */
+export interface MergeResult {
+  ok: boolean
+  reason?: 'full' | 'incompatible' | 'notfound'
+  message?: string
+}
+
 export interface Settings {
   /** Fraction of the screen height the hot zone occupies (0.2 - 0.6). */
   hotZoneHeight: number
@@ -71,6 +97,12 @@ export interface Settings {
   launchAtLogin: boolean
   /** Reduce motion for the panel animations. */
   reduceMotion: boolean
+  /** When true, automatically clears unpinned items on device/app restart. */
+  clearUnpinnedOnRestart: boolean
+  /** Hours after which unpinned items are automatically purged (0 = Never). */
+  autoDeleteHours: number
+  /** UI visual style density ('modern' | 'compact'). */
+  uiStyle: 'modern' | 'compact'
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -78,8 +110,11 @@ export const DEFAULT_SETTINGS: Settings = {
   historyLimit: 500,
   panelHeight: 0.5,
   incognito: false,
-  launchAtLogin: false,
-  reduceMotion: false
+  launchAtLogin: true,
+  reduceMotion: false,
+  clearUnpinnedOnRestart: true,
+  autoDeleteHours: 0,
+  uiStyle: 'modern'
 }
 
 

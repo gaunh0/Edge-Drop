@@ -14,6 +14,8 @@ import { PANEL_LEAVE_EVENT, PANEL_ENTER_EVENT } from '../hooks/useEdgeHover'
 import { Header } from './Header'
 import { ItemList } from './ItemList'
 import { Settings } from './Settings'
+import { ToastStack } from './Toast'
+import { TrashIcon } from './icons'
 
 export function Panel() {
   const open = useStore((s) => s.open)
@@ -21,6 +23,15 @@ export function Panel() {
   const clear = useStore((s) => s.clear)
   const settings = useStore((s) => s.settings)
   const settingsOpen = useStore((s) => s.settingsOpen)
+  const setSettingsOpen = useStore((s) => s.setSettingsOpen)
+  const setQuery = useStore((s) => s.setQuery)
+
+  useEffect(() => {
+    if (!open) {
+      setSettingsOpen(false)
+      setQuery('')
+    }
+  }, [open, setSettingsOpen, setQuery])
 
   const topOffset = '50%'
 
@@ -82,12 +93,7 @@ export function Panel() {
           // Dropped on a DIFFERENT item: merge
           window.edge.mergeItems(req.id, targetId)
         } else if (targetId === req.id) {
-          // Dropped on the SAME item: split it!
-          if (req.imageId || (req.paths && req.paths.length > 0)) {
-            const rect = itemEl.getBoundingClientRect()
-            req.splitPlacement = pos.y < rect.top + rect.height / 2 ? 'before' : 'after'
-            window.edge.splitItem(req)
-          }
+          // Dropped on the SAME item: do nothing, keep it in the collection
         }
       } else {
         // Dropped on empty space (e.g. padding): split
@@ -163,17 +169,25 @@ export function Panel() {
         }}
         animate={{
           clipPath: open
-            ? 'inset(-100px -100px -100px 0px round 0px 24px 24px 0px)'
+            ? 'inset(calc(0% - 100px) calc(0% - 100px) calc(0% - 100px) 0px round 0px 24px 24px 0px)'
             : `inset(calc(50% - ${halfTrigger}px) calc(100% - 3px) calc(50% - ${halfTrigger}px) 0px round 0px 12px 12px 0px)`
         }}
         transition={{
-          type: 'tween',
-          ease: [0.16, 1, 0.3, 1],
+          type: 'spring',
+          bounce: 0.5,
           duration: 0.6
         }}
       >
-        <div className="flare-top" />
-        <div className="flare-bottom" />
+        <div className="flare-top">
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 0 0 L 0 30 L 30 30 A 30 30 0 0 1 0 0 Z" fill="#000000" />
+          </svg>
+        </div>
+        <div className="flare-bottom">
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 0 30 L 0 0 L 30 0 A 30 30 0 0 0 0 30 Z" fill="#000000" />
+          </svg>
+        </div>
         <div
           ref={bladeRef}
           className="blade"
@@ -181,6 +195,7 @@ export function Panel() {
         >
           <Header />
 
+          <ToastStack />
           <AnimatePresence mode="wait">
             {settingsOpen ? (
               <motion.div
@@ -202,14 +217,17 @@ export function Panel() {
                 transition={{ duration: 0.15 }}
                 style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
               >
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 18, background: 'linear-gradient(to bottom, #000000, transparent)', pointerEvents: 'none', zIndex: 10 }} />
                 <ItemList />
-                <div className="footer">
+                <div className="footer" style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: -18, left: 0, right: 0, height: 18, background: 'linear-gradient(to top, #000000, transparent)', pointerEvents: 'none', zIndex: 10 }} />
                   <span className="count">
                     {total} item{total === 1 ? '' : 's'}
                   </span>
                   <div className="spacer" />
-                  <button className="text-btn danger" onClick={clear} disabled={total === 0}>
-                    Clear
+                  <button className="text-btn danger" onClick={clear} disabled={total === 0} title="Clear shelf" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <TrashIcon width={14} height={14} />
+                    <span>Clear</span>
                   </button>
                 </div>
               </motion.div>
@@ -230,49 +248,54 @@ function DropOverlay() {
     <AnimatePresence>
       {dragActive && !internalDragReq && (
         <motion.div
-          initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-          animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
-          exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           style={{
             position: 'absolute',
             inset: 0,
             zIndex: 100,
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
+            gap: '14px',
             pointerEvents: 'none',
-            background: 'rgba(0, 0, 0, 0.4)'
+            background: 'rgba(6, 6, 8, 0.82)',
+            backdropFilter: 'blur(28px)',
+            WebkitBackdropFilter: 'blur(28px)',
+            textAlign: 'center',
+            padding: '24px'
           }}
         >
-          <motion.div
-            initial={{ scale: 0.95, y: 10, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.95, y: 10, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          <div
             style={{
-              padding: '16px 28px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '999px',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: '1rem',
-              boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
+              width: '52px',
+              height: '52px',
+              borderRadius: '16px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px'
+              justifyContent: 'center',
+              color: 'rgba(255, 255, 255, 0.9)'
             }}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3v13"></path>
+              <path d="m8 12 4 4 4-4"></path>
+              <path d="M4 20h16"></path>
             </svg>
-            Drop items here to save
-          </motion.div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(255, 255, 255, 0.95)', letterSpacing: '0.01em' }}>
+              Drop to save
+            </div>
+            <div style={{ fontSize: '12px', fontWeight: 400, color: 'rgba(255, 255, 255, 0.5)', lineHeight: 1.4 }}>
+              Any file, image, link, or text
+            </div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

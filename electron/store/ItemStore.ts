@@ -9,12 +9,16 @@
  *   - Persist the index to JSON and image bytes to per-item PNG files.
  *   - Convert internal items to the serializable DTO form for the renderer.
  */
-import { existsSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, writeFileSync, rmSync, statSync, readdirSync } from 'node:fs'
+import { join, extname, basename as pathBasename } from 'node:path'
 import {
   type ClipboardItem,
   type ClipboardItemDto,
-  type ItemData
+  type DragRequest,
+  type ItemData,
+  type MergeResult,
+  type FileEntry,
+  MAX_STACK
 } from '../../shared/types'
 import { PATHS } from './paths'
 import { createId } from './ids'
@@ -41,6 +45,7 @@ interface Index {
 export class ItemStore {
   private items: ClipboardItem[] = []
   private sigToId = new Map<string, string>()
+  private dataUrlCache = new Map<string, string>()
 
   /** Load persisted state from disk. Called once at startup. */
   load(): void {
@@ -148,39 +153,51 @@ export class ItemStore {
     this.persist()
   }
 
-  merge(sourceId: string, targetId: string): boolean {
-    if (sourceId === targetId) return false
+  merge(sourceId: string, targetId: string): MergeResult {
+    if (sourceId === targetId) return { ok: false }
     const srcIdx = this.items.findIndex(x => x.id === sourceId)
     const tgtIdx = this.items.findIndex(x => x.id === targetId)
-    if (srcIdx < 0 || tgtIdx < 0) return false
+    if (srcIdx < 0 || tgtIdx < 0) return { ok: false, reason: 'notfound' }
 
     const src = this.items[srcIdx]
     const tgt = this.items[tgtIdx]
 
     // Determine how to merge based on kinds
-    // 1. Files + Files -> Files
+    // 1. Files + Files -> Files          (any non-image files stack together)
     // 2. Image(s) + Image(s) -> Image Collection
-    // Mixing files and images: fall back to Files (by converting images to paths? No, they don't have paths yet unless they are temp files. We'll just reject cross-type merges for now, or just merge if same type).
-    
+    // 3. Cross image <-> files -> reject (keeps image previews intact)
+
     let newData: ItemData | null = null
 
     const srcIsImage = src.data.kind === 'image' || src.data.kind === 'image-collection'
     const tgtIsImage = tgt.data.kind === 'image' || tgt.data.kind === 'image-collection'
 
     if (srcIsImage && tgtIsImage) {
-      const srcImages = src.data.kind === 'image' ? [src.data] : src.data.images
-      const tgtImages = tgt.data.kind === 'image' ? [tgt.data] : tgt.data.images
+      const srcImages = src.data.kind === 'image-collection' ? src.data.images : src.data.kind === 'image' ? [{ imageId: src.data.imageId, width: src.data.width, height: src.data.height, bytes: src.data.bytes }] : []
+      const tgtImages = tgt.data.kind === 'image-collection' ? tgt.data.images : tgt.data.kind === 'image' ? [{ imageId: tgt.data.imageId, width: tgt.data.width, height: tgt.data.height, bytes: tgt.data.bytes }] : []
       // Filter out exact duplicate imageIds just in case
-      const seen = new Set(tgtImages.map(i => i.imageId))
-      const combined = [...tgtImages, ...srcImages.filter(i => !seen.has(i.imageId))]
+      const seen = new Set(tgtImages.map((i: { imageId: string }) => i.imageId))
+      const combined = [...tgtImages, ...srcImages.filter((i: { imageId: string }) => !seen.has(i.imageId))]
+
+      // Enforce the per-stack cap BEFORE mutating anything.
+      if (combined.length > MAX_STACK) return { ok: false, reason: 'full', message: 'An image collection can hold a maximum of 10 items' }
       newData = { kind: 'image-collection', images: combined }
     } else if (src.data.kind === 'files' && tgt.data.kind === 'files') {
       const seen = new Set(tgt.data.paths)
       const combined = [...tgt.data.paths, ...src.data.paths.filter(p => !seen.has(p))]
+
+      if (combined.length > MAX_STACK) return { ok: false, reason: 'full', message: 'A folder bundle can hold a maximum of 10 files' }
       newData = { kind: 'files', paths: combined }
     }
 
-    if (!newData) return false
+    if (!newData) {
+      if (srcIsImage || tgtIsImage) {
+        return { ok: false, reason: 'incompatible', message: 'Images can only be grouped with other images' }
+      } else if (src.data.kind === 'files' || tgt.data.kind === 'files') {
+        return { ok: false, reason: 'incompatible', message: 'Files can only be grouped with other files' }
+      }
+      return { ok: false, reason: 'incompatible', message: 'Text and links cannot be grouped together' }
+    }
 
     // Update target item
     this.sigToId.delete(signature(tgt.data))
@@ -188,13 +205,13 @@ export class ItemStore {
     this.sigToId.set(signature(newData), tgt.id)
     tgt.capturedAt = Date.now() // bump time
 
-    // Remove source item completely but DO NOT delete its underlying files/images 
+    // Remove source item completely but DO NOT delete its underlying files/images
     // because they are now owned by the target!
     const [removed] = this.items.splice(srcIdx, 1)
     this.sigToId.delete(signature(removed.data))
-    
+
     this.persist()
-    return true
+    return { ok: true }
   }
 
   public removeSubitem(req: DragRequest): boolean {
@@ -259,7 +276,7 @@ export class ItemStore {
         capturedAt: Date.now(),
         hitCount: 1,
         pinned: false,
-        data: { kind: 'image', imageId: targetImg.imageId, width: targetImg.width, height: targetImg.height }
+        data: { kind: 'image', imageId: targetImg.imageId, width: targetImg.width, height: targetImg.height, bytes: targetImg.bytes }
       }
       this.items.splice(req.splitPlacement === 'after' ? sourceIndex + 1 : sourceIndex, 0, newItem)
       this.rebuildIndex()
@@ -310,6 +327,30 @@ export class ItemStore {
     this.persist()
   }
 
+  pruneExpired(hours: number): boolean {
+    if (!hours || hours <= 0) return false
+    const cutoff = Date.now() - hours * 3600 * 1000
+    const kept: ClipboardItem[] = []
+    let removedAny = false
+    for (const it of this.items) {
+      if (it.pinned || it.capturedAt >= cutoff) {
+        kept.push(it)
+      } else {
+        removedAny = true
+        this.sigToId.delete(signature(it.data))
+        if (it.data.kind === 'image') this.removeImageFile(it.data.imageId)
+        if (it.data.kind === 'image-collection') {
+          it.data.images.forEach((img) => this.removeImageFile(img.imageId))
+        }
+      }
+    }
+    if (removedAny) {
+      this.items = kept
+      this.persist()
+    }
+    return removedAny
+  }
+
   get(id: string): ClipboardItem | undefined {
     return this.items.find((x) => x.id === id)
   }
@@ -321,10 +362,17 @@ export class ItemStore {
   /* ----------------------------- image files ----------------------------- */
 
   /** Read image bytes from disk as a data URL for the renderer. */
-  imageToDataUrl(imageId: string): string | null {
+  imageToDataUrl(imageId: string, ext?: string): string | null {
+    const cacheKey = `${imageId}.${ext || ''}`
+    if (this.dataUrlCache.has(cacheKey)) {
+      return this.dataUrlCache.get(cacheKey)!
+    }
     try {
-      const buf = readFileSync(this.imagePath(imageId))
-      return 'data:image/png;base64,' + buf.toString('base64')
+      const buf = readFileSync(this.imagePath(imageId, ext))
+      const mime = detectImageMime(buf)
+      const url = `data:${mime};base64,` + buf.toString('base64')
+      this.dataUrlCache.set(cacheKey, url)
+      return url
     } catch {
       return null
     }
@@ -340,13 +388,42 @@ export class ItemStore {
     /* no-op: bytes already on disk from capture */
   }
 
-  private imagePath(imageId: string): string {
+  public getImagePath(imageId: string, ext?: string): string {
+    return this.imagePath(imageId, ext)
+  }
+
+  private imagePath(imageId: string, ext?: string): string {
+    if (ext) {
+      const cleanExt = ext.startsWith('.') ? ext.slice(1) : ext
+      return join(PATHS.imagesDir(), `${imageId}.${cleanExt}`)
+    }
+    const dir = PATHS.imagesDir()
+    if (existsSync(dir)) {
+      try {
+        const files = readdirSync(dir)
+        for (const f of files) {
+          if (f.startsWith(`${imageId}.`)) {
+            return join(dir, f)
+          }
+        }
+      } catch { /* ignore */ }
+    }
     return join(PATHS.imagesDir(), `${imageId}.png`)
   }
 
   private removeImageFile(imageId: string): void {
+    for (const key of this.dataUrlCache.keys()) {
+      if (key.startsWith(imageId)) this.dataUrlCache.delete(key)
+    }
+    const dir = PATHS.imagesDir()
+    if (!existsSync(dir)) return
     try {
-      rmSync(this.imagePath(imageId), { force: true })
+      const files = readdirSync(dir)
+      for (const f of files) {
+        if (f.startsWith(`${imageId}.`)) {
+          rmSync(join(dir, f), { force: true })
+        }
+      }
     } catch {
       /* ignore */
     }
@@ -358,16 +435,16 @@ export class ItemStore {
   toDto(): ClipboardItemDto[] {
     return this.items.map((it) => {
       if (it.data.kind === 'image') {
-        const { kind, imageId, width, height, bytes } = it.data
+        const { kind, imageId, width, height, bytes, ext } = it.data
         return {
           ...it,
-          data: { kind, imageId, width, height, bytes, preview: this.imageToDataUrl(imageId) ?? '' }
+          data: { kind, imageId, width, height, bytes, ext, preview: this.imageToDataUrl(imageId, ext) ?? '' }
         }
       }
       if (it.data.kind === 'image-collection') {
         const imagesWithPreviews = it.data.images.map((img) => ({
           ...img,
-          preview: this.imageToDataUrl(img.imageId) ?? ''
+          preview: this.imageToDataUrl(img.imageId, img.ext) ?? ''
         }))
         return {
           ...it,
@@ -380,8 +457,11 @@ export class ItemStore {
           .filter((p) => isImageExt(p))
           .slice(0, 4)
           .map((p) => fileToDataUrl(p))
-        if (previews.some(Boolean)) {
-          return { ...it, data: { ...it.data, previews } }
+        // Per-file display metadata (name / ext / size / isImage) for rich rendering.
+        const entries = it.data.paths.map(buildFileEntry)
+        return {
+          ...it,
+          data: { ...it.data, previews: previews.some(Boolean) ? previews : undefined, entries }
         }
       }
       return { ...it, data: it.data }
@@ -389,9 +469,12 @@ export class ItemStore {
   }
 
   /** Persist a brand-new image captured from the clipboard to its PNG file. */
-  stageImageBytes(imageId: string, png: Buffer): void {
+  stageImageBytes(imageId: string, png: Buffer, ext = 'png'): void {
     try {
-      writeFileSync(this.imagePath(imageId), png)
+      writeFileSync(this.imagePath(imageId, ext), png)
+      const mime = detectImageMime(png)
+      const url = `data:${mime};base64,` + png.toString('base64')
+      this.dataUrlCache.set(`${imageId}.${ext}`, url)
     } catch {
       /* ignore */
     }
@@ -400,21 +483,59 @@ export class ItemStore {
 
 /** Check if a file path points to an image by extension. */
 function isImageExt(p: string): boolean {
-  return /\.(png|jpe?g|gif|webp|bmp|svg|avif|ico)$/i.test(p)
+  return /\.(png|jpe?g|gif|webp|bmp|svg|avif|ico|tiff?|jfif|pjpeg|pjp)$/i.test(p)
+}
+
+/**
+ * Build display metadata for a single file path. `size` is best-effort (0 when
+ * the file can't be stat'd — e.g. a path on a disconnected drive); the renderer
+ * hides the size label when it's 0.
+ */
+const fileEntryCache = new Map<string, FileEntry>()
+const fileDataUrlCache = new Map<string, string>()
+
+function buildFileEntry(p: string): FileEntry {
+  if (fileEntryCache.has(p)) return fileEntryCache.get(p)!
+  let size = 0
+  try {
+    size = statSync(p).size
+  } catch {
+    /* file missing / unreadable — size stays 0 */
+  }
+  const ext = (extname(p).slice(1) || '').toLowerCase()
+  const name = pathBasename(p)
+  const entry = { name, ext, size, isImage: isImageExt(p) }
+  if (fileEntryCache.size > 500) fileEntryCache.clear()
+  fileEntryCache.set(p, entry)
+  return entry
 }
 
 /** Read a file from disk as a data URL (used for image-file previews). */
 function fileToDataUrl(p: string): string {
+  if (fileDataUrlCache.has(p)) return fileDataUrlCache.get(p)!
   try {
     const buf = readFileSync(p)
-    const ext = p.split('.').pop()?.toLowerCase() ?? 'png'
-    const mime = ext === 'svg' ? 'image/svg+xml'
-      : ext === 'gif' ? 'image/gif'
-      : ext === 'webp' ? 'image/webp'
-      : ext === 'bmp' ? 'image/bmp'
-      : 'image/png'
-    return `data:${mime};base64,${buf.toString('base64')}`
+    const mime = detectImageMime(buf)
+    const url = `data:${mime};base64,${buf.toString('base64')}`
+    if (fileDataUrlCache.size > 200) fileDataUrlCache.clear()
+    fileDataUrlCache.set(p, url)
+    return url
   } catch {
     return ''
   }
+}
+
+/** Detect exact MIME type from image magic bytes. */
+function detectImageMime(buf: Buffer): string {
+  if (buf.length >= 3 && buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return 'image/jpeg'
+  if (buf.length >= 4 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return 'image/png'
+  if (buf.length >= 3 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return 'image/gif'
+  if (buf.length >= 12 && buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 && buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) return 'image/webp'
+  if (buf.length >= 2 && buf[0] === 0x42 && buf[1] === 0x4D) return 'image/bmp'
+  if (buf.length >= 4 && buf[0] === 0x00 && buf[1] === 0x00 && buf[2] === 0x01 && buf[3] === 0x00) return 'image/x-icon'
+  if (buf.length >= 4 && ((buf[0] === 0x49 && buf[1] === 0x49 && buf[2] === 0x2A && buf[3] === 0x00) || (buf[0] === 0x4D && buf[1] === 0x4D && buf[2] === 0x00 && buf[3] === 0x2A))) return 'image/tiff'
+  if (buf.length >= 12 && buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70) return 'image/avif'
+  const head = buf.subarray(0, 1024).toString('utf8').trim()
+  if (head.startsWith('<svg') || head.startsWith('<?xml') || head.includes('<svg')) return 'image/svg+xml'
+  return 'image/png'
 }

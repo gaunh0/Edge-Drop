@@ -29,7 +29,17 @@ function fallbackIcon(): Electron.NativeImage {
 
 export function createTray(): Tray {
   const iconPath = PATHS.icon()
-  const image = existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : fallbackIcon()
+  let image = existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : fallbackIcon()
+  if (!image.isEmpty() && existsSync(iconPath)) {
+    const multiImage = nativeImage.createEmpty()
+    for (const size of [16, 20, 24, 32, 48, 64]) {
+      multiImage.addRepresentation({
+        scaleFactor: size / 16,
+        buffer: image.resize({ width: size, height: size, quality: 'best' }).toPNG()
+      })
+    }
+    image = multiImage
+  }
   tray = new Tray(image)
   tray.setToolTip('Edge-Drop')
 
@@ -37,17 +47,22 @@ export function createTray(): Tray {
     const settings = loadSettings()
     const menu = Menu.buildFromTemplate([
       {
-        label: 'Show panel',
+        label: 'Show Clipboard',
         click: () => {
-          console.log('[Main] Context menu "Show panel" clicked')
+          console.log('[Main] Context menu "Show Clipboard" clicked')
           setVisible(true)
           getMainWindow()?.focus()
           pushState.togglePanel()
         }
       },
       {
-        label: 'Hide panel',
-        click: () => setVisible(false)
+        label: 'Settings',
+        click: () => {
+          console.log('[Main] Context menu "Settings" clicked')
+          setVisible(true)
+          getMainWindow()?.focus()
+          pushState.openSettings()
+        }
       },
       { type: 'separator' },
       {
@@ -59,12 +74,6 @@ export function createTray(): Tray {
           pushState.settings(next)
           applyIncognito(next.incognito)
         }
-      },
-      {
-        label: 'Launch at login',
-        type: 'checkbox',
-        checked: settings.launchAtLogin,
-        click: (item) => saveSettings({ launchAtLogin: item.checked })
       },
       { type: 'separator' },
       {

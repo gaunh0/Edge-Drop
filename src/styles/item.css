@@ -27,6 +27,20 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* Compact UI Density Mode */
+.list.compact .item {
+  margin-bottom: 6px;
+  border-radius: 12px;
+}
+.list.compact .item-main {
+  padding: 8px 12px;
+  gap: 10px;
+}
+.list.compact .preview {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 
 
 /* The main row within an item card. Carries the flex layout, padding,
@@ -146,32 +160,12 @@
   transform-origin: bottom center;
 }
 
-.bundle-stack-files {
-  height: 80px;
-  position: relative;
-  width: 100%;
-  margin-top: 4px;
-}
-
-.bundle-file-card {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  margin-left: calc(-50% + 20px);
-  width: calc(100% - 40px);
-  height: 50px;
-  background: rgba(40, 40, 40, 0.95);
-  backdrop-filter: blur(8px);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  transform-origin: bottom center;
+.bundle-file-stack-card {
+  background: linear-gradient(135deg, rgba(38, 38, 42, 0.98), rgba(24, 24, 28, 0.98));
+  backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  gap: 8px;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 13px;
+  justify-content: center;
 }
 
 .kind-badge {
@@ -329,6 +323,77 @@
 .fluid-list-row:hover .subitem-delete-btn {
   opacity: 1;
   background: rgba(255, 255, 255, 0.15);
+}
+
+/* The tinted file-type icon tile in expanded file rows */
+.fluid-list-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+/* File name + size stack inside an expanded file row */
+.fluid-list-text-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fluid-list-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fluid-list-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* "N / 10" capacity readout next to the bundle actions pill */
+.bundle-capacity {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+/* Single (non-image) file tile: tinted type icon + name + type/size */
+.single-file-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.single-file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+.single-file-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.single-file-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: lowercase;
 }
 
 .bundle-more-label {

@@ -39,7 +39,7 @@ export function basename(p: string): string {
 }
 
 /** Is this a path to an image (by extension)? */
-const IMG_EXT = /\.(png|jpe?g|gif|webp|bmp|svg|avif|ico)$/i
+const IMG_EXT = /\.(png|jpe?g|gif|webp|bmp|svg|avif|ico|tiff?|jfif|pjpeg|pjp)$/i
 export function isImagePath(p: string): boolean {
   return IMG_EXT.test(p)
 }

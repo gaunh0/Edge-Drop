@@ -10,7 +10,7 @@ import { clipboard } from 'electron'
 import type { ItemData } from '../../shared/types'
 
 /** Windows clipboard format name for a copied-file list. */
-const CF_FILE_LIST = 'FileNameW'
+export const CF_FILE_LIST = 'FileNameW'
 
 /** Read the list of copied file paths (Windows), or null if none. */
 function readFileList(): string[] | null {
@@ -27,6 +27,20 @@ function readFileList(): string[] | null {
   }
 }
 
+/**
+ * Build a `FileNameW` buffer suitable for `clipboard.writeBuffer()`.
+ *
+ * This is the reverse of `readFileList()`: UTF-16LE paths separated by NUL
+ * chars, terminated with a double NUL. Writing this format lets the Windows
+ * clipboard hold actual file *references* so that pasting into Explorer, Word,
+ * etc. operates on the real files instead of pasting literal path strings.
+ */
+export function buildFileListBuffer(paths: string[]): Buffer {
+  // Each path separated by NUL, then two trailing NULs to terminate the list.
+  const joined = paths.join('\0') + '\0\0'
+  return Buffer.from(joined, 'utf16le')
+}
+
 const URL_RE = /^(https?:\/\/|www\.)[^\s]+$/i
 const COLOR_HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 
@@ -38,7 +52,7 @@ const IGNORED_FORMATS = [
 ]
 
 /** Read a DWORD (32-bit uint) from a clipboard format, if present. */
-function getClipboardDword(format: string): number | undefined {
+export function _getClipboardDword(format: string): number | undefined {
   try {
     const buf = clipboard.readBuffer(format)
     if (buf && buf.length >= 4) {
@@ -128,31 +142,17 @@ export function readClipboard(): ItemData | null {
   // Determine primary intent based on formatting metadata
   let isTextIntent = false
   if (rawText) {
-    if (hasRtf) {
-      // RTF is almost exclusively used by word processors / rich text editors.
+    if (!hasImage) {
+      // If there is no image format at all, any text is definitely text.
       isTextIntent = true
-    } else if (hasHtml && !hasImage) {
-      // HTML without an image is definitely text.
-      isTextIntent = true
-    } else if (hasText && !hasImage) {
-      // Plain text without an image is definitely text.
-      isTextIntent = true
-    } else if (hasImage) {
-      // Both text and image exist.
-      // If the text is very short and matches a URL, it's likely a fallback for an image copied from a browser.
-      const isUrl = URL_RE.test(rawText)
-      if (isUrl && rawText.length < 500) {
-        isTextIntent = false
-      } else {
-        // If the HTML contains more than just a single img tag, it's likely rich text containing an image.
-        const rawHtml = clipboard.readHTML().trim()
-        if (rawHtml) {
-          // A simple heuristic: if it has significant text content outside tags, it's text.
-          const stripped = rawHtml.replace(/<[^>]*>?/gm, '').trim()
-          if (stripped.length > 0 && stripped !== rawText && rawText.length > 10) {
-            isTextIntent = true
-          }
-        }
+    } else {
+      // Both text and image exist on the clipboard (common in Office, Chrome, IDEs).
+      // If the text is just a URL or a bare <img> tag, it's a browser fallback for a copied image.
+      const isUrl = URL_RE.test(rawText) && rawText.length < 500
+      const isImgTag = /^<img\b[^>]*>$/i.test(rawText)
+      if (!isUrl && !isImgTag) {
+        // Any other text (short words, code snippets, paragraphs) is genuinely copied text!
+        isTextIntent = true
       }
     }
   }

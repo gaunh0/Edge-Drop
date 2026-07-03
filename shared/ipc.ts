@@ -9,7 +9,7 @@
  *   - `Renderer -> Main` calls (invoke/handle) are listed in `InvokeMap`.
  *   - `Main -> Renderer` events (send/on) are listed in `EventMap`.
  */
-import type { ClipboardItemDto, DragRequest, Settings } from './types'
+import type { ClipboardItemDto, DragRequest, MergeResult, Settings } from './types'
 
 /* ------------------------------------------------------------------ */
 /* Renderer -> Main  (ipcMain.handle / ipcRenderer.invoke)            */
@@ -38,11 +38,17 @@ export interface InvokeMap {
    *  collection) onto the system clipboard. */
   'item:copy-subitem': { args: [req: DragRequest]; result: boolean }
 
+  /** Copy an item and paste it directly into the active application. */
+  'item:paste': { args: [id: string]; result: boolean }
+
+  /** Copy a sub-item and paste it directly into the active application. */
+  'item:paste-subitem': { args: [req: DragRequest]; result: boolean }
+
   /** Add local file paths dragged into the shelf. */
   'item:add-files': { args: [paths: string[]]; result: ClipboardItemDto[] }
 
-  /** Merge an item into another. */
-  'item:merge': { args: [sourceId: string, targetId: string]; result: boolean }
+  /** Merge an item into another. Returns why it failed (full / incompatible). */
+  'item:merge': { args: [sourceId: string, targetId: string]; result: MergeResult }
 
   /** Split a sub-item out of a bundle into a new standalone item. */
   'item:split': { args: [req: DragRequest]; result: boolean }
@@ -65,10 +71,17 @@ export interface EventMap {
   'state:settings': [settings: Settings]
   /** Toggle the panel open/closed from the main process (e.g. tray). */
   'window:toggle': []
+  /** Open the panel directly to settings from the main process (e.g. tray). */
+  'window:open-settings': []
   /** Fired when an OS drag initiated by the app has completed. */
   'item:drag-end': []
   /** Internal drop triggered by the main process when startDrag ends inside the window */
   'item:internal-drop': [pos: { x: number; y: number }]
+  /**
+   * Transient user-facing notice (e.g. "Stack is full (10 max)"). The renderer
+   * shows it as a toast; `id` lets it dedupe/dismiss.
+   */
+  'ui:toast': [toast: { id: string; message: string; tone: 'info' | 'error' }]
   /**
    * Main-process cursor poll signals: fired when the cursor enters/leaves
    * the screen-edge hot zone. The renderer uses this to open/close the panel

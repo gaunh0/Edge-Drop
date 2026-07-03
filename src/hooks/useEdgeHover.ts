@@ -86,19 +86,25 @@ export function useEdgeHover(): void {
     recompute()
     window.addEventListener('resize', recompute)
     return () => window.removeEventListener('resize', recompute)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [settings.hotZoneHeight, settings.panelHeight])
 
   // Single stable effect — deps never change after mount.
   useEffect(() => {
     let dwellTimer: number | undefined
     let graceTimer: number | undefined
+    let interactiveTimer: number | undefined
 
     const closePanel = () => {
       if (!openRef.current) return
       if (dragActiveRef.current && !internalDragRef.current) return
       setOpen(false)
-      window.setTimeout(() => edge.setInteractive(false), 220)
+      if (interactiveTimer !== undefined) window.clearTimeout(interactiveTimer)
+      interactiveTimer = window.setTimeout(() => {
+        interactiveTimer = undefined
+        if (!openRef.current) {
+          edge.setInteractive(false)
+        }
+      }, 180)
     }
 
     const scheduleClose = (delay = GRACE_MS) => {
@@ -112,16 +118,24 @@ export function useEdgeHover(): void {
         window.clearTimeout(graceTimer)
         graceTimer = undefined
       }
+      if (interactiveTimer !== undefined) {
+        window.clearTimeout(interactiveTimer)
+        interactiveTimer = undefined
+      }
     }
 
     const openPanel = () => {
-      if (openRef.current) return
       cancelClose()
       if (dwellTimer !== undefined) {
         window.clearTimeout(dwellTimer)
         dwellTimer = undefined
       }
+      if (interactiveTimer !== undefined) {
+        window.clearTimeout(interactiveTimer)
+        interactiveTimer = undefined
+      }
       edge.setInteractive(true)
+      if (openRef.current) return
       setOpen(true)
     }
 
@@ -179,6 +193,9 @@ export function useEdgeHover(): void {
       }
 
       if (!openRef.current) return
+
+      // Self-healing safety: if panel is open, enforce interactivity so it can never be stuck click-through!
+      edge.setInteractive(true)
 
       // Hysteresis-based close detection.
       // Using two separate thresholds prevents the oscillation that occurs when
@@ -258,6 +275,7 @@ export function useEdgeHover(): void {
       document.removeEventListener('dragend', onDocDragEnd)
       window.clearTimeout(dwellTimer)
       window.clearTimeout(graceTimer)
+      window.clearTimeout(interactiveTimer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setOpen, setDragActive])

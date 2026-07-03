@@ -56,11 +56,13 @@ function on<C extends EventChannel>(
  */
 let internalDrag = false
 
-window.addEventListener('dragover', (e) => {
+const win: any = (globalThis as any).window || globalThis
+
+win.addEventListener('dragover', (e: any) => {
   e.preventDefault()
 }, false)
 
-window.addEventListener('drop', (e) => {
+win.addEventListener('drop', (e: any) => {
   if (internalDrag) {
     e.preventDefault()
     return
@@ -95,6 +97,8 @@ const api = {
   clearItems: () => invoke('item:clear'),
   copyItem: (id: string) => invoke('item:copy', id),
   copySubitem: (req: import('../../shared/types').DragRequest) => invoke('item:copy-subitem', req),
+  pasteItem: (id: string) => invoke('item:paste', id),
+  pasteSubitem: (req: import('../../shared/types').DragRequest) => invoke('item:paste-subitem', req),
   startDrag: (req: DragRequest) => send('item:start-drag', req),
   addFiles: (paths: string[]) => invoke('item:add-files', paths),
   removeSubitem: (req: import('../../shared/types').DragRequest) => invoke('item:remove-subitem', req),
@@ -109,9 +113,11 @@ const api = {
   onItems: (cb: (items: EventArgs<'state:items'>[0]) => void) => on('state:items', cb),
   onSettings: (cb: (settings: EventArgs<'state:settings'>[0]) => void) => on('state:settings', cb),
   onToggle: (cb: () => void) => on('window:toggle', cb),
+  onOpenSettings: (cb: () => void) => on('window:open-settings', cb),
   onDragEnd: (cb: () => void) => on('item:drag-end', cb),
   onInternalDrop: (cb: (pos: { x: number; y: number }) => void) => on('item:internal-drop', cb),
   onCursorEdge: (cb: (data: { x: number; y: number; inEdge: boolean; inZone: boolean }) => void) => on('window:cursor-edge', cb),
+  onToast: (cb: (toast: { id: string; message: string; tone: 'info' | 'error' }) => void) => on('ui:toast', cb),
 
   /* Drag helpers */
   // (Handled natively by capturing drop event above)

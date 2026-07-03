@@ -10,10 +10,44 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "build:win": "npm run build && electron-builder --win",
+    "package": "npm run build && electron-builder --win",
     "preview": "electron-vite preview",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web"
+  },
+  "build": {
+    "appId": "com.edgedrop.app",
+    "productName": "Edge-Drop",
+    "directories": {
+      "output": "C:/Users/yadav/.gemini/antigravity-ide/brain/fb8fe3b1-256b-4212-80ae-836bebbcc71f/scratch/dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**/*",
+      "resources/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Edge-Drop",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
@@ -21,11 +55,13 @@
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react": "^4.2.1",
     "electron": "^30.0.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^2.1.0",
     "typescript": "^5.4.3",
     "vite": "^5.2.6"
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "framer-motion": "^11.0.24",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
