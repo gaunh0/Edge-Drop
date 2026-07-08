@@ -6,15 +6,38 @@
  * is a compile-time error rather than a runtime one.
  */
 import { app, ipcMain, clipboard, nativeImage } from 'electron'
-import { execFile } from 'node:child_process'
+import { execFile, execSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { type InvokeMap, type InvokeChannel, type SendMap, type SendChannel } from '../../shared/ipc'
 import { getStore, loadSettings, saveSettings, pushState, addFiles, getWatcher } from './state'
 import { getMainWindow } from './window'
-import { setInteractive } from './window'
+import { setInteractive, setHeartbeatPaused } from './window'
 import { startDragOut, resolveDragData } from './drag'
-import { buildFileListBuffer, CF_FILE_LIST } from '../clipboard/formats'
+import { clipboardSignature } from '../clipboard/formats'
 import type { ItemData, MergeResult } from '../../shared/types'
+
+/**
+ * Returns true if the current system clipboard content matches the given item data.
+ *
+ * Used before delete to decide whether to clear the system clipboard. Clearing
+ * is only done when the deleted item IS the thing currently on the clipboard;
+ * deleting an old history entry that the user has since replaced must never
+ * wipe their current clipboard contents.
+ */
+function clipboardMatchesItem(data: ItemData): boolean {
+  const sig = clipboardSignature()
+  if (data.kind === 'text') return sig === `text:${data.text}`
+  if (data.kind === 'files') return sig === `files:${data.paths.join('\n')}`
+  if (data.kind === 'image') {
+    // sig format: "image:<W>x<H>:<hash>" — check the dimension prefix to avoid a full pixel read.
+    // If another image with the same dimensions is on the clipboard, we over-clear, which is
+    // acceptable (user loses clipboard content they were about to paste from a deleted item anyway).
+    return sig.startsWith(`image:${data.width}x${data.height}:`)
+  }
+  // image-collection: clear if any image is on the clipboard (conservative but safe)
+  if (data.kind === 'image-collection') return sig.startsWith('image:')
+  return false
+}
 
 /** Fire a transient toast to the renderer (best-effort; renderer may be closed). */
 function toast(message: string, tone: 'info' | 'error' = 'info'): void {
@@ -37,21 +60,88 @@ function simulatePaste(): void {
 }
 
 /**
- * Write file *references* onto the Windows clipboard (not path strings).
+ * Write file *references* onto the system clipboard so that paste in Explorer,
+ * Word, Slack, and every other shell-aware app copies the actual files.
  *
- * `FileNameW` is the format Explorer/Word/every Windows app reads for a
- * "copy these files" gesture — without it, paste produces literal path text.
- * We also write plain text as a fallback so pure-text targets still get something.
+ * WHY POWERSHELL: Electron's clipboard API calls EmptyClipboard() on every
+ * write. Sequential calls (writeBuffer then writeText) leave only the LAST
+ * format — which was always the plain path string, making every paste land as
+ * text. PowerShell's Clipboard.SetFileDropList writes CF_HDROP + FileNameW +
+ * Shell IDList Array + all other shell formats in a single atomic transaction.
+ * Paths are base64-encoded so any character (spaces, quotes, Unicode) is safe.
  */
 function writeFileListToClipboard(paths: string[]): void {
-  clipboard.clear()
-  try {
-    clipboard.writeBuffer(CF_FILE_LIST, buildFileListBuffer(paths))
-  } catch {
-    /* writeBuffer can throw for unregistered formats on some platforms; the
-       text fallback below still lets text-only targets work. */
+  if (process.platform === 'win32' && paths.length > 0) {
+    try {
+      const addLines = paths
+        .map(p => `$c.Add([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${Buffer.from(p, 'utf8').toString('base64')}')))|Out-Null`)
+        .join(';')
+      const script = [
+        'Add-Type -AssemblyName System.Windows.Forms',
+        '$c=New-Object System.Collections.Specialized.StringCollection',
+        addLines,
+        '[Windows.Forms.Clipboard]::SetFileDropList($c)'
+      ].join(';')
+      const encoded = Buffer.from(script, 'utf16le').toString('base64')
+      execSync(`powershell.exe -NoProfile -NonInteractive -EncodedCommand ${encoded}`, {
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: 3000
+      })
+      return
+    } catch (err) {
+      console.error('[ipc] writeFileListToClipboard PowerShell failed, using text fallback:', err)
+    }
   }
+  // Non-Windows fallback: plain text paths (best-effort)
+  clipboard.clear()
   clipboard.writeText(paths.join('\r\n'))
+}
+
+/**
+ * Write an image onto the clipboard with BOTH bitmap data (for paste into
+ * Slack, Word, image editors, etc.) AND a file drop reference (for paste into
+ * Explorer). Uses PowerShell's DataObject to set both formats atomically —
+ * Electron's API can't do this because each write empties the clipboard first.
+ *
+ * Falls back to bitmap-only via Electron if PowerShell fails.
+ */
+function writeImageToClipboard(imagePath: string | null, previewDataUrl: string): void {
+  if (process.platform === 'win32' && imagePath && existsSync(imagePath)) {
+    try {
+      // Build a script that sets both Bitmap and FileDrop on a single DataObject.
+      // The image is loaded from disk (not from data URL) so it is full-resolution.
+      const b64Path = Buffer.from(imagePath, 'utf8').toString('base64')
+      const script = [
+        'Add-Type -AssemblyName System.Windows.Forms',
+        'Add-Type -AssemblyName System.Drawing',
+        `$p=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64Path}'))`,
+        '$bmp=[Drawing.Image]::FromFile($p)',
+        '$d=New-Object Windows.Forms.DataObject',
+        '$d.SetImage($bmp)',
+        '$c=New-Object System.Collections.Specialized.StringCollection',
+        '$c.Add($p)|Out-Null',
+        '$d.SetFileDropList($c)',
+        '[Windows.Forms.Clipboard]::SetDataObject($d,$true)',
+        '$bmp.Dispose()'
+      ].join(';')
+      const encoded = Buffer.from(script, 'utf16le').toString('base64')
+      execSync(`powershell.exe -NoProfile -NonInteractive -EncodedCommand ${encoded}`, {
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: 4000
+      })
+      return
+    } catch (err) {
+      console.error('[ipc] writeImageToClipboard PowerShell failed, using bitmap fallback:', err)
+    }
+  }
+  // Fallback: write bitmap only via Electron (no file reference)
+  try {
+    const img = nativeImage.createFromDataURL(previewDataUrl)
+    if (!img.isEmpty()) {
+      clipboard.clear()
+      clipboard.writeImage(img)
+    }
+  } catch { /* ignore */ }
 }
 
 /**
@@ -80,13 +170,30 @@ export function registerIpc(): void {
   })
 
   handle('item:delete', (id) => {
+    const item = getStore().get(id)
     getStore().delete(id)
+    // If the deleted item is still on the system clipboard, clear the clipboard.
+    // This is the fix for the copy→delete→copy cycle bug:
+    //   Without this, resyncSignature() would lock lastSig to the current
+    //   clipboard state. When the user immediately re-copies the same image the
+    //   clipboard never changes, so the watcher never fires and the item stays
+    //   invisible. Clearing makes the clipboard transition to 'empty', so the
+    //   next re-copy IS a detectable change.
+    if (item && clipboardMatchesItem(item.data)) {
+      clipboard.clear()
+    }
+    getWatcher().resyncSignature()
     pushState.items()
     return getStore().toDto()
   })
 
   handle('item:clear', () => {
     getStore().clearUnpinned()
+    // Clear the system clipboard unconditionally: the user wiped their history,
+    // so whatever is on the clipboard should not zombie-reappear, and clearing
+    // ensures any subsequent re-copy of the same content is detectable.
+    clipboard.clear()
+    getWatcher().resyncSignature()
     pushState.items()
     return getStore().toDto()
   })
@@ -129,18 +236,11 @@ export function registerIpc(): void {
     } else if (dto.data.kind === 'image-collection' && req.imageId) {
       const img = dto.data.images.find((i) => i.imageId === req.imageId)
       if (img) {
+        // Single image from a collection: write full bitmap + file reference atomically.
         const src = getStore().getImagePath(img.imageId, img.ext)
-        if (src && existsSync(src)) {
-          writeFileListToClipboard([src])
-          wrote = true
-        }
-        if (img.preview) {
-          const native = nativeImage.createFromDataURL(img.preview)
-          if (!native.isEmpty()) {
-            if (!wrote) clipboard.clear()
-            try { clipboard.writeImage(native); wrote = true } catch {}
-          }
-        }
+        const preview = img.preview ?? ''
+        writeImageToClipboard(src && existsSync(src) ? src : null, preview)
+        wrote = true
       }
     }
 
@@ -209,18 +309,11 @@ export function registerIpc(): void {
       } else if (dto.data.kind === 'image-collection' && req.imageId) {
         const img = dto.data.images.find((i) => i.imageId === req.imageId)
         if (img) {
+          // Single image from a collection: write full bitmap + file reference atomically.
           const src = getStore().getImagePath(img.imageId, img.ext)
-          if (src && existsSync(src)) {
-            writeFileListToClipboard([src])
-            wrote = true
-          }
-          if (img.preview) {
-            const native = nativeImage.createFromDataURL(img.preview)
-            if (!native.isEmpty()) {
-              if (!wrote) clipboard.clear()
-              try { clipboard.writeImage(native); wrote = true } catch {}
-            }
-          }
+          const preview = img.preview ?? ''
+          writeImageToClipboard(src && existsSync(src) ? src : null, preview)
+          wrote = true
         }
       }
 
@@ -327,9 +420,19 @@ export function registerSendListeners(): void {
       return
     }
     console.log('[IPC] start-drag: kind=', data.kind)
+
+    // Pause the always-on-top heartbeat for the duration of the drag.
+    // The heartbeat fires SetWindowPos(HWND_TOPMOST) every 500 ms, which
+    // pushes our window in front of the DWM drag-ghost image — making the
+    // dragged item appear to vanish ~0.5 s into any drag gesture.
+    setHeartbeatPaused(true)
+
     startDragOut(sender, data)
     console.log('[IPC] start-drag returned, sending drag-end')
     sender.send('item:drag-end')
+
+    // Re-enable the heartbeat now that the drag is over.
+    setHeartbeatPaused(false)
 
     // Workaround for Electron/Windows not firing drop events on the source window:
     // Check if the user dropped the item back onto our window!
@@ -355,30 +458,26 @@ export function writeItemToClipboard(data: ItemData): void {
       clipboard.clear()
       clipboard.write({ text: data.text, html: data.html })
       break
+
     case 'image': {
       const dto = getStore().toDto().find(
         (d) => d.data.kind === 'image' && d.data.imageId === data.imageId
       )
       if (dto && dto.data.kind === 'image') {
+        // Write bitmap AND file reference atomically via PowerShell DataObject.
+        // This lets the user paste into Slack/Word (reads bitmap) AND into
+        // Explorer (reads CF_HDROP file reference) from the same clipboard write.
         const src = getStore().getImagePath(dto.data.imageId, dto.data.ext)
-        let wrote = false
-        if (src && existsSync(src)) {
-          writeFileListToClipboard([src])
-          wrote = true
-        }
-        const img = nativeImage.createFromDataURL(dto.data.preview)
-        if (!img.isEmpty()) {
-          if (!wrote) clipboard.clear()
-          try { clipboard.writeImage(img) } catch {}
-        }
+        writeImageToClipboard(src && existsSync(src) ? src : null, dto.data.preview)
       }
       break
     }
+
     case 'image-collection': {
-      // Copy all image file references of the collection onto the clipboard
-      // so pasting into Explorer / Word / Slack copies all images in the group.
+      // Write all image file references so pasting into Explorer copies all files.
+      // Also write the first image as bitmap so single-image paste targets work.
       const dto = getStore().toDto().find(
-        (d) => d.data.kind === 'image-collection' && d.data.images[0]
+        (d) => d.data.kind === 'image-collection'
       )
       if (dto && dto.data.kind === 'image-collection') {
         const paths: string[] = []
@@ -387,24 +486,55 @@ export function writeItemToClipboard(data: ItemData): void {
           if (existsSync(src)) paths.push(src)
         }
         if (paths.length > 0) {
-          writeFileListToClipboard(paths)
-        }
-        // Also attempt to write the primary image bitmap if possible for image-only paste targets
-        const first = dto.data.images[0]
-        const img = nativeImage.createFromDataURL(first.preview)
-        if (!img.isEmpty()) {
-          try {
-            clipboard.writeImage(img)
-          } catch {
-            /* ignore if format conflicts with file list on some systems */
+          // For multi-image collections, write all file refs atomically.
+          // Also include the first image as bitmap using DataObject.
+          const firstImg = dto.data.images[0]
+          const firstPreview = firstImg?.preview ?? ''
+          if (paths.length === 1) {
+            // Single resolved path: use full atomic image+file write
+            writeImageToClipboard(paths[0], firstPreview)
+          } else {
+            // Multiple files: write CF_HDROP for all + bitmap for first
+            try {
+              const addLines = paths
+                .map(p => `$c.Add([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${Buffer.from(p, 'utf8').toString('base64')}')))|Out-Null`)
+                .join(';')
+              const b64First = Buffer.from(paths[0], 'utf8').toString('base64')
+              const script = [
+                'Add-Type -AssemblyName System.Windows.Forms',
+                'Add-Type -AssemblyName System.Drawing',
+                `$fp=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64First}'))`,
+                '$bmp=[Drawing.Image]::FromFile($fp)',
+                '$d=New-Object Windows.Forms.DataObject',
+                '$d.SetImage($bmp)',
+                '$c=New-Object System.Collections.Specialized.StringCollection',
+                addLines,
+                '$d.SetFileDropList($c)',
+                '[Windows.Forms.Clipboard]::SetDataObject($d,$true)',
+                '$bmp.Dispose()'
+              ].join(';')
+              const encoded = Buffer.from(script, 'utf16le').toString('base64')
+              execSync(`powershell.exe -NoProfile -NonInteractive -EncodedCommand ${encoded}`, {
+                stdio: ['ignore', 'pipe', 'ignore'],
+                timeout: 4000
+              })
+            } catch (err) {
+              console.error('[ipc] image-collection clipboard write failed:', err)
+              // Fallback: write first image bitmap only
+              try {
+                const img = nativeImage.createFromDataURL(firstPreview)
+                if (!img.isEmpty()) { clipboard.clear(); clipboard.writeImage(img) }
+              } catch { /* ignore */ }
+            }
           }
         }
       }
       break
     }
+
     case 'files':
-      // Write real file references so pasting into Explorer copies the file,
-      // not a path string.
+      // Write real file references so pasting into Explorer copies the files,
+      // not path strings.
       writeFileListToClipboard(data.paths)
       break
   }

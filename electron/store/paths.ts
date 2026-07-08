@@ -22,8 +22,10 @@ export const PATHS = {
   settingsFile: () => join(root(), 'settings.json'),
   /** Scratch dir for temp files handed to native drag-out. */
   tempDir: () => join(root(), 'temp'),
-  /** App icon (used by tray + native drag image). */
-  icon: () => join(app.getAppPath(), 'resources', 'icon.png')
+  /** App icon (used by window + native drag image). */
+  icon: () => join(app.getAppPath(), 'resources', 'icon.png'),
+  /** Tray icon (pure white logo without background). */
+  trayIcon: () => join(app.getAppPath(), 'resources', 'tray.png')
 } as const
 
 /** Idempotently create every directory the app needs. Safe to call repeatedly. */

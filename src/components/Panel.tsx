@@ -229,6 +229,7 @@ export function Panel() {
                 style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
               >
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 18, background: 'linear-gradient(to bottom, #000000, transparent)', pointerEvents: 'none', zIndex: 10 }} />
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 18, background: 'linear-gradient(to bottom, #000000, transparent)', pointerEvents: 'none', zIndex: 10 }} />
                 <ItemList />
                 <div className="footer" style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', top: -18, left: 0, right: 0, height: 18, background: 'linear-gradient(to top, #000000, transparent)', pointerEvents: 'none', zIndex: 10 }} />
@@ -236,7 +237,13 @@ export function Panel() {
                     {total} item{total === 1 ? '' : 's'}
                   </span>
                   <div className="spacer" />
-                  <button className="text-btn danger" onClick={clear} disabled={total === 0} title="Clear shelf" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button 
+                    className="text-btn danger"
+                    onClick={clear} 
+                    disabled={total === 0} 
+                    title="Clear shelf" 
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
                     <TrashIcon width={14} height={14} />
                     <span>Clear</span>
                   </button>
@@ -249,6 +256,23 @@ export function Panel() {
       </motion.div>
     </div>
   )
+}
+
+function getTutorialText(step: number): string {
+  switch (step) {
+    case 1:
+      return 'Click the trash icon on the pinned card below to delete it.'
+    case 2:
+      return 'Copy any text or image (Ctrl + C) from another application to capture it.'
+    case 3:
+      return 'Drag the image card below and drop it onto your desktop.'
+    case 4:
+      return 'Click the files card below to expand the stack and view its contents.'
+    case 5:
+      return 'Click the Clear button at the bottom of the panel to finish.'
+    default:
+      return ''
+  }
 }
 
 function DropOverlay() {

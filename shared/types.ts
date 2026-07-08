@@ -46,6 +46,7 @@ export interface FileEntry {
   ext: string
   size: number
   isImage: boolean
+  preview?: string
 }
 
 /** Payload sent over IPC: same as ClipboardItem but with inline image previews. */
@@ -103,18 +104,21 @@ export interface Settings {
   autoDeleteHours: number
   /** UI visual style density ('modern' | 'compact'). */
   uiStyle: 'modern' | 'compact'
+  /** Flag to track if the onboarding tutorial is completed. */
+  tutorialCompleted: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  hotZoneHeight: 0.25,
+  hotZoneHeight: 0.60,
   historyLimit: 500,
   panelHeight: 0.5,
   incognito: false,
   launchAtLogin: true,
   reduceMotion: false,
-  clearUnpinnedOnRestart: true,
+  clearUnpinnedOnRestart: false,
   autoDeleteHours: 0,
-  uiStyle: 'modern'
+  uiStyle: 'modern',
+  tutorialCompleted: false
 }
 
 

@@ -9,8 +9,9 @@
  *   - Persist the index to JSON and image bytes to per-item PNG files.
  *   - Convert internal items to the serializable DTO form for the renderer.
  */
-import { existsSync, readFileSync, writeFileSync, rmSync, statSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, rmSync, statSync, readdirSync, mkdirSync } from 'node:fs'
 import { join, extname, basename as pathBasename } from 'node:path'
+import { nativeImage } from 'electron'
 import {
   type ClipboardItem,
   type ClipboardItemDto,
@@ -56,6 +57,9 @@ export class ItemStore {
           this.items = raw.items.filter((it) => it && it.data && typeof it.id === 'string')
           this.rebuildIndex()
         }
+      } else {
+        this.items = []
+        this.rebuildIndex()
       }
     } catch {
       this.items = []
@@ -452,16 +456,23 @@ export class ItemStore {
         }
       }
       if (it.data.kind === 'files') {
-        // Generate inline previews for image files (first 4 only to cap size).
-        const previews = it.data.paths
-          .filter((p) => isImageExt(p))
-          .slice(0, 4)
-          .map((p) => fileToDataUrl(p))
-        // Per-file display metadata (name / ext / size / isImage) for rich rendering.
-        const entries = it.data.paths.map(buildFileEntry)
+        // Build per-file metadata entries. If a file is an image, we generate and attach
+        // its preview data URL inline (capped to first 4 images to prevent bloat).
+        let imagePreviewCount = 0
+        const entries = it.data.paths.map((p) => {
+          const entry = buildFileEntry(p)
+          if (entry.isImage && imagePreviewCount < 4) {
+            imagePreviewCount++
+            return {
+              ...entry,
+              preview: fileToDataUrl(p)
+            }
+          }
+          return entry
+        })
         return {
           ...it,
-          data: { ...it.data, previews: previews.some(Boolean) ? previews : undefined, entries }
+          data: { ...it.data, entries }
         }
       }
       return { ...it, data: it.data }
@@ -510,10 +521,35 @@ function buildFileEntry(p: string): FileEntry {
   return entry
 }
 
-/** Read a file from disk as a data URL (used for image-file previews). */
+/** 
+ * Read an image file from disk and return a small thumbnail as a JPEG data URL.
+ * We use Electron's nativeImage.createFromPath().resize() to generate a small
+ * thumbnail on-the-fly without loading the full image bytes into memory.
+ * This keeps the IPC payload tiny (thumbnail vs 8-9MB original) and prevents
+ * the main thread from blocking when the user copies large images.
+ */
+const THUMB_SIZE = 240 // px — enough for the card UI, tiny IPC payload
+const THUMB_QUALITY = 80 // JPEG quality
+
 function fileToDataUrl(p: string): string {
   if (fileDataUrlCache.has(p)) return fileDataUrlCache.get(p)!
   try {
+    // Use Electron nativeImage to create a thumbnail without loading the full file.
+    const img = nativeImage.createFromPath(p)
+    if (!img.isEmpty()) {
+      const size = img.getSize()
+      // Only resize if the image is larger than our thumbnail size.
+      const needsResize = size.width > THUMB_SIZE || size.height > THUMB_SIZE
+      const thumb = needsResize
+        ? img.resize({ width: THUMB_SIZE, quality: 'good' })
+        : img
+      const url = thumb.toDataURL({ scaleFactor: 1.0 })
+        .replace('image/png', 'image/jpeg') // hint the renderer it's small
+      if (fileDataUrlCache.size > 200) fileDataUrlCache.clear()
+      fileDataUrlCache.set(p, url)
+      return url
+    }
+    // Fallback for SVG and other formats nativeImage can't decode — read raw.
     const buf = readFileSync(p)
     const mime = detectImageMime(buf)
     const url = `data:${mime};base64,${buf.toString('base64')}`

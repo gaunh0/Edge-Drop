@@ -126,8 +126,13 @@ function ClipboardItemBase({ item }: Props) {
 
   const onExpand = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation()
-    if (isBundle) setExpanded(true)
-  }, [isBundle])
+    if (isBundle) {
+      setExpanded(true)
+      if (useStore.getState().tutorialStep === 4 && item.id === 'onboarding-files') {
+        useStore.getState().setTutorialStep(5)
+      }
+    }
+  }, [isBundle, item.id])
 
   const onCollapse = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation()
@@ -436,9 +441,20 @@ function BundleFluidPreview({
                     animate={{ opacity: 1, x: 0, y: 0, rotate: 0, scale: 1, zIndex: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <div className="fluid-list-icon" style={{ color: getFileKind(filePath).color }}>
-                      <FileKindIcon path={filePath} width={16} height={16} />
-                    </div>
+                    {entry?.isImage && entry.preview ? (
+                      <div className="fluid-list-icon" style={{ overflow: 'hidden', padding: 0 }}>
+                        <img 
+                          src={entry.preview} 
+                          alt="" 
+                          draggable={false} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} 
+                        />
+                      </div>
+                    ) : (
+                      <div className="fluid-list-icon" style={{ color: getFileKind(filePath).color }}>
+                        <FileKindIcon path={filePath} width={16} height={16} />
+                      </div>
+                    )}
                     <div className="fluid-list-text-wrap">
                       <div className="fluid-list-text">{name}</div>
                       {size > 0 && <div className="fluid-list-sub">{formatBytes(size)}</div>}
@@ -466,12 +482,13 @@ function BundleFluidPreview({
           ) : (
             <motion.div key="collapsed" layout style={{ width: '100%' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <div className="bundle-stack-large">
-                {paths.slice(0, 4).reverse().map((filePath, idx, arr) => {
+                {paths.slice(0, 4).map((filePath, i) => ({ filePath, pathIndex: i })).reverse().map(({ filePath, pathIndex }, idx, arr) => {
                   const realIndex = arr.length - 1 - idx
+                  const entry = entries?.[pathIndex]
                   return (
                     <motion.div
-                      layoutId={`file-${item.id}-${idx}`}
-                      key={`${item.id}-${idx}`}
+                      layoutId={`file-${item.id}-${pathIndex}`}
+                      key={`${item.id}-${pathIndex}`}
                       className="bundle-stack-card bundle-file-stack-card"
                       animate={{
                         x: realIndex * 20 - 20,
@@ -482,9 +499,18 @@ function BundleFluidPreview({
                       style={{ zIndex: 10 - realIndex }}
                       initial={{ borderRadius: 8 }}
                     >
-                      <div style={{ color: getFileKind(filePath).color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <FileKindIcon path={filePath} width={40} height={40} />
-                      </div>
+                      {entry?.isImage && entry.preview ? (
+                        <img 
+                          src={entry.preview} 
+                          alt="" 
+                          draggable={false} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} 
+                        />
+                      ) : (
+                        <div style={{ color: getFileKind(filePath).color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <FileKindIcon path={filePath} width={40} height={40} />
+                        </div>
+                      )}
                     </motion.div>
                   )
                 })}
@@ -540,12 +566,12 @@ function Preview({ item }: { item: ClipboardItemDto }) {
       const entry = item.data.entries?.[0]
       const name = entry?.name ?? basename(first)
       // Single image file — show its thumbnail.
-      if (item.data.previews && item.data.previews[0]) {
+      if (entry?.isImage && entry.preview) {
         return (
           <div className="thumb-wrap">
             <img
               className="thumb"
-              src={item.data.previews[0]}
+              src={entry.preview}
               alt=""
               draggable={false}
             />

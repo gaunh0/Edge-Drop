@@ -34,14 +34,34 @@ export interface GroupedItems {
 export function useFilteredItems(): GroupedItems {
   const items = useStore((s) => s.items)
   const query = useStore((s) => s.query)
+  const tutorialStep = useStore((s) => s.tutorialStep)
 
   return useMemo(() => {
     const pinned: ClipboardItemDto[] = []
     const recent: ClipboardItemDto[] = []
-    for (const it of items) {
+
+    const filteredByTutorial = items.filter((it) => {
+      if (tutorialStep <= 0) return true
+      switch (tutorialStep) {
+        case 1:
+          return it.id === 'onboarding-welcome'
+        case 2:
+          return false
+        case 3:
+          return it.id === 'onboarding-image' || !it.id.startsWith('onboarding-')
+        case 4:
+          return it.id === 'onboarding-files'
+        case 5:
+          return true
+        default:
+          return true
+      }
+    })
+
+    for (const it of filteredByTutorial) {
       if (!matches(it, query.trim())) continue
       ;(it.pinned ? pinned : recent).push(it)
     }
     return { pinned, recent }
-  }, [items, query])
+  }, [items, query, tutorialStep])
 }

@@ -16,6 +16,7 @@ import { createTray, registerIncognitoApplier } from './tray'
 import { registerIpc, registerSendListeners } from './ipc'
 import { prewarmDragIcons } from './drag'
 import { initState, getWatcher, loadSettings, pushState, stopStateTimers } from './state'
+import { createOnboardingWindow } from './onboardingWindow'
 import { join } from 'node:path'
 import { existsSync, createReadStream } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -52,9 +53,16 @@ app.on('before-quit', () => {
   stopHeartbeat()
   stopStateTimers()
   getWatcher().stop()
+  try {
+    const { globalShortcut } = require('electron')
+    globalShortcut.unregisterAll()
+  } catch { /* ignore */ }
 })
 
 app.whenReady().then(() => {
+  // Set App User Model ID so native notifications are branded as "Edge-Drop" on Windows
+  app.setAppUserModelId('com.edgedrop.app')
+
   ensureDirs()
   cleanTemp()
 
@@ -68,6 +76,21 @@ app.whenReady().then(() => {
   createWindow()
   startCursorPoll()
   createTray()
+
+  // Register Alt+C global shortcut to toggle panel
+  try {
+    const { globalShortcut } = require('electron')
+    let lastToggleTime = 0
+    globalShortcut.register('Alt+C', () => {
+      if (runtime.quitting) return
+      const now = Date.now()
+      if (now - lastToggleTime < 500) return // Throttle to once per 500ms
+      lastToggleTime = now
+      pushState.togglePanel()
+    })
+  } catch (err) {
+    console.error('[Main] Failed to register global shortcut Alt+C:', err)
+  }
   registerIpc()
   registerSendListeners()
   initState()
@@ -75,6 +98,10 @@ app.whenReady().then(() => {
 
   // Reflect incognito setting into the watcher immediately.
   const settings = loadSettings()
+  if (!settings.tutorialCompleted) {
+    createOnboardingWindow()
+  }
+  
   if (app.isPackaged) {
     try {
       app.setLoginItemSettings({

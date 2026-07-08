@@ -6,7 +6,7 @@
  * state (checkmarks) is rebuilt every time the menu opens so it always reflects
  * current settings.
  */
-import { Menu, Tray, app, nativeImage } from 'electron'
+import { Menu, Tray, app, nativeImage, Notification } from 'electron'
 import { existsSync } from 'node:fs'
 import { PATHS } from '../store/paths'
 import { loadSettings, saveSettings } from '../store/settings'
@@ -28,20 +28,33 @@ function fallbackIcon(): Electron.NativeImage {
 }
 
 export function createTray(): Tray {
-  const iconPath = PATHS.icon()
-  let image = existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : fallbackIcon()
-  if (!image.isEmpty() && existsSync(iconPath)) {
-    const multiImage = nativeImage.createEmpty()
-    for (const size of [16, 20, 24, 32, 48, 64]) {
-      multiImage.addRepresentation({
-        scaleFactor: size / 16,
-        buffer: image.resize({ width: size, height: size, quality: 'best' }).toPNG()
-      })
-    }
-    image = multiImage
+  const iconPath = PATHS.trayIcon()
+  let image: Electron.NativeImage
+
+  if (existsSync(iconPath)) {
+    // Load and resize to exactly 32x32. Windows system tray renders icons at 16x16
+    // logical pixels but uses 32x32 physical pixels on 2x DPI displays.
+    // Using a single 32x32 image with no scaleFactor trickery is the most reliable
+    // approach — the OS scales it automatically.
+    image = nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32, quality: 'best' })
+  } else {
+    image = fallbackIcon()
   }
   tray = new Tray(image)
   tray.setToolTip('Edge-Drop')
+
+  // Show welcome notification on first run
+  if (!existsSync(PATHS.indexFile())) {
+    try {
+      if (Notification.isSupported()) {
+        new Notification({
+          title: 'Edge-Drop Clipboard Shelf',
+          body: 'Hover against the middle-left screen edge, or press Alt+C to slide open your shelf.',
+          icon: PATHS.icon()
+        }).show()
+      }
+    } catch { /* ignore */ }
+  }
 
   const rebuild = () => {
     const settings = loadSettings()

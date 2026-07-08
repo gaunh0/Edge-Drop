@@ -61,14 +61,13 @@ export function setInteractive(value: boolean): void {
   if (value) {
     // Panel is open: disable click-through so user can interact.
     mainWindow.setIgnoreMouseEvents(false)
-    mainWindow.setAlwaysOnTop(true, 'floating')
+    // Use 'screen-saver' level to stay above fullscreen apps (YouTube fullscreen, games, etc.)
+    // 'floating' (HWND_TOPMOST) can be pushed behind by fullscreen D3D/browser windows.
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
   } else {
     // Panel is closed: full click-through, no forwarding needed.
-    // Cursor edge detection is done by the main-process poll (startCursorPoll)
-    // via screen.getCursorScreenPoint() + IPC, so forward:true is not required
-    // and omitting it ensures Windows passes ALL mouse clicks to apps beneath.
     mainWindow.setIgnoreMouseEvents(true, { forward: false })
-    mainWindow.setAlwaysOnTop(true, 'floating')
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
   }
 }
 
@@ -81,6 +80,35 @@ export function setInteractive(value: boolean): void {
 let cursorPollTimer: ReturnType<typeof setInterval> | null = null
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null
 let lastEdgeState = false
+let heartbeatPaused = false
+
+/**
+ * Temporarily suspend the always-on-top heartbeat.
+ *
+ * The heartbeat calls setAlwaysOnTop() every 500 ms, which reasserts z-order
+ * via SetWindowPos(HWND_TOPMOST) on Windows.  During a native drag the OS
+ * renders the drag-ghost image using the DWM compositor at a layer that sits
+ * BELOW HWND_TOPMOST windows.  Every heartbeat tick therefore pushes our
+ * window in front of the ghost, making it disappear ~0.5 s into any drag.
+ *
+ * Pausing the heartbeat for the duration of the drag keeps the window at its
+ * current z-position and lets the DWM ghost stay visible for the full drag.
+ * The heartbeat is re-enabled (and immediately re-asserts always-on-top) when
+ * the drag ends.
+ */
+export function setHeartbeatPaused(paused: boolean): void {
+  heartbeatPaused = paused
+  if (!paused) {
+    // Re-assert z-order immediately when drag ends so the window snaps back
+    // to the correct level without waiting up to 500 ms for the next tick.
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+      mainWindow.setAlwaysOnTop(true, 'screen-saver')
+    }
+    if (detectorWindow && !detectorWindow.isDestroyed() && detectorWindow.isVisible()) {
+      detectorWindow.setAlwaysOnTop(true, 'screen-saver')
+    }
+  }
+}
 
 export function startCursorPoll(): void {
   if (cursorPollTimer !== null) return
@@ -191,7 +219,7 @@ export function createWindow(): BrowserWindow {
 
   // Respect OS-level always-on-top reordering.
   mainWindow.on('focus', () => {
-    mainWindow?.setAlwaysOnTop(true, 'floating')
+    mainWindow?.setAlwaysOnTop(true, 'screen-saver')
   })
 
   // Open external links in the default browser.
@@ -209,8 +237,9 @@ export function createWindow(): BrowserWindow {
 
   mainWindow.once('ready-to-show', () => {
     if (!mainWindow) return
-    mainWindow.show()
-    mainWindow.setAlwaysOnTop(true, 'floating')
+    mainWindow.showInactive()
+    // 'screen-saver' level stays above fullscreen browser windows and games.
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
   })
 
   mainWindow.webContents.on('console-message', (_event, _level, message, line, sourceId) => {
@@ -226,19 +255,19 @@ export function createWindow(): BrowserWindow {
   // Create the detector window for OS drag-in awareness.
   createDetectorWindow(x, y, width, height)
 
-  // Periodic heartbeat: Windows window managers and fullscreen apps often re-order
-  // transparent floating windows behind other applications when inactive.
-  // Re-asserting always-on-top at 'screen-saver' level every 3s prevents losing edge hover.
+  // Periodic heartbeat: Windows fullscreen apps (Chrome YouTube, games) push
+  // floating windows behind them. Re-asserting 'screen-saver' level every 500ms
+  // ensures the panel instantly re-appears when the user exits fullscreen.
   if (heartbeatTimer !== null) clearInterval(heartbeatTimer)
   heartbeatTimer = setInterval(() => {
-    if (runtime.quitting) return
+    if (runtime.quitting || heartbeatPaused) return
     if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
-      mainWindow.setAlwaysOnTop(true, 'floating')
+      mainWindow.setAlwaysOnTop(true, 'screen-saver')
     }
     if (detectorWindow && !detectorWindow.isDestroyed() && detectorWindow.isVisible()) {
-      detectorWindow.setAlwaysOnTop(true, 'normal')
+      detectorWindow.setAlwaysOnTop(true, 'screen-saver')
     }
-  }, 3000)
+  }, 500)
 
   return mainWindow
 }
@@ -255,7 +284,7 @@ export function setVisible(visible: boolean): void {
   if (!mainWindow) return
   if (visible) {
     mainWindow.showInactive()
-    mainWindow.setAlwaysOnTop(true, 'floating')
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
   } else {
     mainWindow.hide()
   }

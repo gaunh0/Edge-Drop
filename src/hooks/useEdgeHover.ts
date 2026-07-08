@@ -62,6 +62,11 @@ export function useEdgeHover(): void {
   const settingsRef = useRef(settings)
   settingsRef.current = settings
 
+  // Throttle the self-healing setInteractive(true) call.
+  // Without this, it fires at 60Hz (every 16ms) via the cursor-edge poll,
+  // flooding the IPC queue and starving the messages that open the panel.
+  const lastSetInteractiveRef = useRef(0)
+
   // Hot zone and panel bounds, recomputed on resize to avoid reading DOM at 1000Hz
   const zone = useRef({ top: 0, bottom: 0, midY: 0, panelHalfH: 0 })
 
@@ -195,7 +200,12 @@ export function useEdgeHover(): void {
       if (!openRef.current) return
 
       // Self-healing safety: if panel is open, enforce interactivity so it can never be stuck click-through!
-      edge.setInteractive(true)
+      // Throttled to fire at most once every 2 seconds to prevent flooding the IPC queue.
+      const now = Date.now()
+      if (now - lastSetInteractiveRef.current > 2000) {
+        lastSetInteractiveRef.current = now
+        edge.setInteractive(true)
+      }
 
       // Hysteresis-based close detection.
       // Using two separate thresholds prevents the oscillation that occurs when

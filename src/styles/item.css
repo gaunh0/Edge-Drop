@@ -455,3 +455,46 @@
   border-radius: 999px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
+
+/* Interactive Onboarding Tutorial Banner styling */
+.tutorial-banner {
+  margin: 16px 16px 8px 16px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.tutorial-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.tutorial-instruction {
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+}
+
+.tutorial-highlight {
+  animation: pulse-glow 1.5s infinite alternate;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+@keyframes pulse-glow {
+  from {
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.1);
+  }
+  to {
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+  }
+}

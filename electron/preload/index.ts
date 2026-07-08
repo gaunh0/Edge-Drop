@@ -108,6 +108,7 @@ const api = {
     invoke('settings:update', patch),
   setInteractive: (value: boolean) => invoke('window:set-interactive', value),
   setInternalDrag: (active: boolean) => { internalDrag = active },
+  broadcastTutorialStep: (step: number) => send('tutorial:set-step', step),
 
   /* Main -> Renderer */
   onItems: (cb: (items: EventArgs<'state:items'>[0]) => void) => on('state:items', cb),
@@ -118,6 +119,7 @@ const api = {
   onInternalDrop: (cb: (pos: { x: number; y: number }) => void) => on('item:internal-drop', cb),
   onCursorEdge: (cb: (data: { x: number; y: number; inEdge: boolean; inZone: boolean }) => void) => on('window:cursor-edge', cb),
   onToast: (cb: (toast: { id: string; message: string; tone: 'info' | 'error' }) => void) => on('ui:toast', cb),
+  onTutorialStep: (cb: (step: number) => void) => on('tutorial:step', cb),
 
   /* Drag helpers */
   // (Handled natively by capturing drop event above)

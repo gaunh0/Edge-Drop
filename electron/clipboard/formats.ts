@@ -228,7 +228,7 @@ export function readClipboard(): ItemData | null {
       imageId: '',
       width: size.width,
       height: size.height,
-      bytes: img.toPNG().length
+      bytes: 0  // placeholder — ClipboardWatcher overwrites this with the actual PNG buffer length
     }
   }
 
@@ -249,22 +249,29 @@ export function readClipboard(): ItemData | null {
 
 /**
  * A cheap signature string used to detect that the clipboard *changed* without
- * having to construct a full ItemData or encode images to base64.
+ * having to construct a full ItemData or encode images.
  *
- * Strategy: combine the list of available format names with quick fingerprints
- * for each content type. For images this uses the byte *length* of the PNG
- * buffer rather than encoding the whole image to a data URL (which was the
- * previous approach and was very expensive on a 600ms poll).
+ * Strategy:
+ *  - Files   → the list of paths (totally stable, always unique per copy)
+ *  - Text    → the text content itself
+ *  - Images  → dimensions + a sampled FNV-1a hash of raw pixel bytes
+ *
+ * For images we use `nativeImage.toBitmap()` (raw BGRA, no codec) and walk
+ * ~400 evenly-spaced bytes through it.  This is:
+ *   - Fast:   no PNG encoding, O(400) byte reads regardless of image size
+ *   - Stable: same clipboard content → same pixels → same hash on every poll
+ *   - Unique: different images with the same resolution produce different pixel
+ *             values in practice, so collisions are astronomically unlikely
+ *
+ * The old approach used toPNG().length which was (a) expensive — re-encodes the
+ * whole image on every poll tick — and (b) non-unique: two different 1920×1080
+ * screenshots of similar complexity can produce the same byte count, causing the
+ * second to be silently ignored as "no change".
  */
 export function clipboardSignature(): string {
   if (isClipboardExcluded()) {
     return 'excluded'
   }
-
-  const formats = clipboard.availableFormats()
-  // A cheap fingerprint of *what* is on the clipboard.
-  // Sorting makes the format-key stable regardless of OS ordering.
-  const fmtKey = formats.slice().sort().join('\x1f')
 
   // If files are on the clipboard, their paths are the most stable fingerprint.
   // Use fast, non-blocking read to avoid spawning a child process during polling.
@@ -273,17 +280,28 @@ export function clipboardSignature(): string {
     return `files:${files.join('\n')}`
   }
 
-  // Text — hash the content itself.
+  // Text — the content itself is the fingerprint.
   const text = clipboard.readText().trim()
   if (text) {
     return `text:${text}`
   }
 
-  // If there's an image, use available formats + byte length (no data URL).
+  // Images: sample raw pixel bytes through FNV-1a for a fast, stable fingerprint.
   const img = clipboard.readImage()
   if (!img.isEmpty()) {
-    const pngLen = img.toPNG().length
-    return `image:${fmtKey}:${pngLen}`
+    const size = img.getSize()
+    const bitmap = img.toBitmap()  // raw BGRA — no encoding, just a memory copy
+
+    // FNV-1a over ~400 evenly-spaced bytes.
+    // Step ensures we sample the full image regardless of resolution.
+    const step = Math.max(1, Math.floor(bitmap.length / 400))
+    let hash = 0x811c9dc5 // FNV offset basis
+    for (let i = 0; i < bitmap.length; i += step) {
+      hash ^= bitmap[i]
+      hash = Math.imul(hash, 0x01000193) >>> 0 // FNV prime, keep as uint32
+    }
+
+    return `image:${size.width}x${size.height}:${hash.toString(36)}`
   }
 
   return 'empty'

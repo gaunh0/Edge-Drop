@@ -49,10 +49,18 @@ export function initState(): void {
   })
   watcher.setPaused(loadSettings().incognito)
 
+  // After a restart-clear, the watcher.start() seeds lastSig from the live
+  // clipboard (correct). But if clearUnpinnedOnRestart removed items that are
+  // still on the clipboard, the user can re-copy them immediately — this works
+  // because start() always re-seeds lastSig fresh from the current clipboard.
+  // No extra invalidate() is needed here.
+
   if (pruneTimer !== null) clearInterval(pruneTimer)
   pruneTimer = setInterval(() => {
     if (runtime.quitting) return
     if (store.pruneExpired(loadSettings().autoDeleteHours)) {
+      // Pruned items should be re-capturable if still on the clipboard.
+      watcher.resyncSignature()
       pushState.items()
     }
   }, 60_000)

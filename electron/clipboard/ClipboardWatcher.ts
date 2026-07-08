@@ -62,9 +62,11 @@ export class ClipboardWatcher {
         // Images need their bytes persisted + an id assigned before publishing.
         if (data.kind === 'image') {
           const img = clipboard.readImage()
+          const png = img.toPNG()       // encode once — reuse for both bytes count and file write
           data.imageId = createId()
-          data.bytes = img.toPNG().length
-          onNew(data, img.toPNG())
+          data.bytes = png.length
+          data.ext = 'png'              // always set so cache key is 'id.png', never 'id.undefined'
+          onNew(data, png)
         } else {
           onNew(data)
         }
@@ -80,6 +82,32 @@ export class ClipboardWatcher {
     if (!paused) {
       this.lastSig = clipboardSignature()
     }
+  }
+
+  /**
+   * Resync the watcher's last-seen signature to the current clipboard state.
+   *
+   * Call this after deleting or clearing items. The goal is dual:
+   *
+   * 1. Prevent "zombie" re-appearances: if the deleted content is still on the
+   *    system clipboard, the watcher must NOT re-add it on the next poll. By
+   *    re-seeding lastSig from the live clipboard, the next tick sees no change
+   *    and stays quiet.
+   *
+   * 2. Allow re-capture after genuine re-copy: when the user later copies
+   *    something different and then copies the original content again, the
+   *    clipboard WILL change (different → original), so the watcher will detect
+   *    the change and re-capture it correctly.
+   *
+   * NOTE: The one edge case this does NOT solve is: user copies X, deletes X
+   * from Edge-Drop, then immediately copies X again WITHOUT copying anything
+   * else in between (system clipboard never changed). In that narrow case we
+   * cannot detect the re-copy because the OS clipboard didn't change. This is
+   * an acceptable limitation — the common-case fix (zombie prevention) is far
+   * more important.
+   */
+  resyncSignature(): void {
+    this.lastSig = clipboardSignature()
   }
 
   stop(): void {

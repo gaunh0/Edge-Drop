@@ -58,7 +58,7 @@ interface AppState {
   clear: () => Promise<void>
   copy: (id: string) => Promise<void>
   paste: (id: string) => Promise<void>
-  pasteSubitem: (req: import('../../shared/types').DragRequest) => Promise<void>
+  pasteSubitem: (req: DragRequest) => Promise<void>
   patchSettings: (patch: Partial<Settings>) => Promise<void>
 }
 
@@ -75,7 +75,11 @@ export const useStore = create<AppState>((set, get) => ({
 
   async hydrate() {
     const { items, settings } = await edge.loadState()
-    set({ items, settings, hydrated: true })
+    set({ 
+      items, 
+      settings, 
+      hydrated: true
+    })
   },
 
   setItems: (items) => set({ items }),
