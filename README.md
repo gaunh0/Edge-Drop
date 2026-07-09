@@ -26,11 +26,11 @@ When your cursor approaches the left boundary of your screen, Edge-Drop dynamica
 
 | 1. Welcome to Edge-Drop | 2. Collect Anything | 3. Drag & Drop Anywhere |
 |:---:|:---:|:---:|
-| <video src="public/placeholder_welcome.mp4" width="250" autoplay loop muted playsinline></video> | <video src="public/placeholder_copy.mp4" width="250" autoplay loop muted playsinline></video> | <video src="public/placeholder_drag.mp4" width="250" autoplay loop muted playsinline></video> |
+| <video src="https://github.com/Deepender25/Edge-Drop/raw/main/public/placeholder_welcome.mp4" width="250" autoplay loop muted playsinline></video> | <video src="https://github.com/Deepender25/Edge-Drop/raw/main/public/placeholder_copy.mp4" width="250" autoplay loop muted playsinline></video> | <video src="https://github.com/Deepender25/Edge-Drop/raw/main/public/placeholder_drag.mp4" width="250" autoplay loop muted playsinline></video> |
 
 | 4. Explore File Stacks | 5. Ungroup & Split Stacks | 6. Combine & Merge Items |
 |:---:|:---:|:---:|
-| <video src="public/placeholder_stacks.mp4" width="250" autoplay loop muted playsinline></video> | <video src="public/placeholder_ungroup.mp4" width="250" autoplay loop muted playsinline></video> | <video src="public/placeholder_merge.mp4" width="250" autoplay loop muted playsinline></video> |
+| <video src="https://github.com/Deepender25/Edge-Drop/raw/main/public/placeholder_stacks.mp4" width="250" autoplay loop muted playsinline></video> | <video src="https://github.com/Deepender25/Edge-Drop/raw/main/public/placeholder_ungroup.mp4" width="250" autoplay loop muted playsinline></video> | <video src="https://github.com/Deepender25/Edge-Drop/raw/main/public/placeholder_merge.mp4" width="250" autoplay loop muted playsinline></video> |
 
 ---
 
