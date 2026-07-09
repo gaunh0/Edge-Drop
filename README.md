@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/logo-white.png" alt="Edge-Drop Logo" width="100" height="100" />
+  <img src="public/Logo%20(4).png" alt="Edge-Drop Logo" width="100" height="100" />
 </p>
 
 <h1 align="center">Edge-Drop</h1>
@@ -87,7 +87,6 @@ stateDiagram-v2
         [*] --> PollingEdge
         PollingEdge --> TriggerZone: Cursor x <= 3px in hot zone
         TriggerZone --> DwellTimer: Linger >= 120ms
-        DwellTimer --> Open: Timer expires
     }
 
     state Open {
@@ -96,8 +95,10 @@ stateDiagram-v2
         HysteresisCheck --> Interactive: Cursor x <= 255px inside Blade
         HysteresisCheck --> GraceTimer: Cursor x > 290px OR Left y-bounds
         GraceTimer --> Interactive: Cursor returns before 250ms
-        GraceTimer --> Closed: Timer expires and setOpen false
     }
+
+    Closed --> Open: DwellTimer expires
+    Open --> Closed: GraceTimer expires
 ```
 
 * **Trigger Zone (`x <= 3px`)**: A 3-pixel strip on the left screen edge starts a 120ms dwell timer.

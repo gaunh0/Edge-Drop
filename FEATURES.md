@@ -74,7 +74,6 @@ stateDiagram-v2
         [*] --> PollingEdge
         PollingEdge --> TriggerZone: Cursor x <= 3px in hot zone
         TriggerZone --> DwellTimer: Linger >= 120ms
-        DwellTimer --> Open: Timer expires
     }
 
     state Open {
@@ -83,8 +82,10 @@ stateDiagram-v2
         HysteresisCheck --> Interactive: Cursor x <= 255px inside Blade
         HysteresisCheck --> GraceTimer: Cursor x > 290px OR Left y-bounds
         GraceTimer --> Interactive: Cursor returns before 250ms
-        GraceTimer --> Closed: Timer expires and setOpen false
     }
+
+    Closed --> Open: DwellTimer expires
+    Open --> Closed: GraceTimer expires
 ```
 
 ### 1. Main-Process 16ms Screen Polling
