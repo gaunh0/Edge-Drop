@@ -266,7 +266,7 @@ export function createWindow(): BrowserWindow {
   // ensures the panel instantly re-appears when the user exits fullscreen.
   if (heartbeatTimer !== null) clearInterval(heartbeatTimer)
   heartbeatTimer = setInterval(() => {
-    if (runtime.quitting || heartbeatPaused) return
+    if (runtime.quitting || heartbeatPaused || interactive) return
     if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
       mainWindow.setAlwaysOnTop(true, 'screen-saver')
     }
