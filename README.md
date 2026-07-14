@@ -1,308 +1,386 @@
 <p align="center">
-  <img src="public/Logo%20(4).png" alt="Edge-Drop Logo" width="150" height="150" />
+  <img src="public/Logo%20(4).png" alt="Edge-Drop Logo" width="140" height="140" />
 </p>
 
 <h1 align="center">Edge-Drop</h1>
 
 <p align="center">
-  <strong>An engineering-grade, zero-click, hover-activated desktop clipboard shelf and native OS file transfer hub.</strong>
+  <strong>A zero-click, hover-activated clipboard shelf and native OS file-transfer hub for the desktop.</strong><br/>
+  Lives invisibly on the left edge of your screen. Approach it, and it opens. Drag anything out — into Photoshop, Word, Slack, Explorer, anywhere.
 </p>
 
 <p align="center">
-  Built with Electron, React, TypeScript, and Framer Motion.
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#demos">Demos</a> ·
+  <a href="#how-it-works">How It Works</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#security">Security</a> ·
+  <a href="#roadmap">Roadmap</a> ·
+  <a href="#contributing">Contributing</a>
+</p>
+
+<p align="center">
+  <sub>Built with Electron · React · TypeScript · Framer Motion · Zustand</sub><br/>
+  <sub>License: Apache-2.0 &nbsp;·&nbsp; Status: Public Beta</sub>
 </p>
 
 ---
 
-## Overview
+## Why
 
-Traditional clipboard managers disrupt workflow by requiring repetitive keyboard shortcuts (`Win+V`, `Cmd+Shift+V`) or manual navigation to system tray menus. **Edge-Drop** eliminates cognitive friction by acting as a transparent, frameless, always-on-top desktop accessory anchored to the leftmost pixel edge of your monitor.
+Every clipboard manager on the market breaks your flow. You copy something, switch apps, paste, then hunt through `Win+V` history with arrow keys or dig into a tray menu. Multi-step. Modal. Slow.
 
-When your cursor approaches the left boundary of your screen, Edge-Drop dynamically reveals itself with synchronized elastic spring physics. You can drag images, file stacks, rich text snippets, and HTML bundles out of the shelf and drop them natively into professional desktop software—such as **Adobe Photoshop**, **Microsoft Word**, **Slack**, or **Windows Explorer**—without ever leaving your active application.
+**Edge-Drop removes the friction.** It anchors to the leftmost pixel of your monitor as a transparent, always-on-top, click-through surface. When your cursor approaches the edge, the shelf springs open. Drag images, file stacks, rich text, and HTML bundles *out* of it — directly into whatever desktop app you're already using. No shortcuts. No window switching. No modal dialogs.
 
----
-
-## Showcase / Interaction Demos
-
-| | |
-|:---:|:---:|
-| **1. Welcome to Edge-Drop** <br> <video src="https://github.com/user-attachments/assets/118d59cc-9821-4da1-9424-ea9bc1b6e548" width="300" autoplay loop muted playsinline></video> | **2. Collect Anything** <br> <video src="https://github.com/user-attachments/assets/8daa18a7-d023-4e93-9f17-c30791a7c41c" width="300" autoplay loop muted playsinline></video> |
-| **3. Drag & Drop Anywhere** <br> <video src="https://github.com/user-attachments/assets/ac8bc411-0827-460c-828c-0799f4cee4d8" width="300" autoplay loop muted playsinline></video> | **4. Explore File Stacks** <br> <video src="https://github.com/user-attachments/assets/b1e47a2b-41d2-4958-8e42-4fefcaa8b26b" width="300" autoplay loop muted playsinline></video> |
-| **5. Ungroup & Split Stacks** <br> <video src="https://github.com/user-attachments/assets/e41eb9f8-62b0-4525-a28a-2bacafd0bb8c" width="300" autoplay loop muted playsinline></video> | **6. Combine & Merge Items** <br> <video src="https://github.com/user-attachments/assets/cee7d5f7-658b-433a-9fa0-6592a5a75fa4" width="300" autoplay loop muted playsinline></video> |
+It is built for the developer and creative workflow where you constantly juggle screenshots, code snippets, file paths, design assets, and reference links between many windows at once.
 
 ---
 
+## Demos
 
-## Architectural & Data Flow Diagrams
+> All demos are silent autoplay loops. Hover to scrub, right-click → open in new tab for full size.
 
-### 1. High-Level System Architecture
-Edge-Drop maintains strict separation between Node.js system-level integrations (Main Process) and the React visual presentation layer (Renderer Process), communicating over a type-safe IPC bridge.
+<table>
+  <tr>
+    <td width="50%" align="center"><b>1. Welcome to Edge-Drop</b><br/><br/>
+      <video src="https://github.com/user-attachments/assets/118d59cc-9821-4da1-9424-ea9bc1b6e548" width="100%" autoplay loop muted playsinline></video>
+    </td>
+    <td width="50%" align="center"><b>2. Collect Anything</b><br/><br/>
+      <video src="https://github.com/user-attachments/assets/8daa18a7-d023-4e93-9f17-c30791a7c41c" width="100%" autoplay loop muted playsinline></video>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><b>3. Drag & Drop Anywhere</b><br/><br/>
+      <video src="https://github.com/user-attachments/assets/ac8bc411-0827-460c-828c-0799f4cee4d8" width="100%" autoplay loop muted playsinline></video>
+    </td>
+    <td width="50%" align="center"><b>4. Explore File Stacks</b><br/><br/>
+      <video src="https://github.com/user-attachments/assets/b1e47a2b-41d2-4958-8e42-4fefcaa8b26b" width="100%" autoplay loop muted playsinline></video>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><b>5. Ungroup & Split Stacks</b><br/><br/>
+      <video src="https://github.com/user-attachments/assets/e41eb9f8-62b0-4525-a28a-2bacafd0bb8c" width="100%" autoplay loop muted playsinline></video>
+    </td>
+    <td width="50%" align="center"><b>6. Combine & Merge Items</b><br/><br/>
+      <video src="https://github.com/user-attachments/assets/cee7d5f7-658b-433a-9fa0-6592a5a75fa4" width="100%" autoplay loop muted playsinline></video>
+    </td>
+  </tr>
+</table>
+
+---
+
+## Quick Start
+
+### Prerequisites
+- **Node.js** v18 or higher
+- **OS**: Windows 10/11 (primary target — uses Win32 OLE drag pipelines and transparent-window cursor polling) or macOS 12+
+
+### Run from source
+```bash
+git clone https://github.com/Deepender25/Edge-Drop.git
+cd Edge-Drop
+npm install
+npm run dev          # launches Electron + Vite HMR
+```
+
+### Type-check
+```bash
+npm run typecheck    # runs tsc --noEmit against both node and web configs
+```
+
+### Build a Windows installer
+```bash
+npm run package      # outputs an NSIS .exe to /dist
+```
+
+> [!NOTE]
+> On Windows, if packaging fails with `EBUSY: resource busy or locked`, close any running Edge-Drop instances first: `taskkill /F /IM electron.exe /T`.
+
+---
+
+## How It Works
+
+Edge-Drop is an Electron app split into three strictly isolated processes — **Main** (Node.js, OS access), **Preload** (typed sandbox bridge), and **Renderer** (React UI). They communicate over a fully typed IPC contract. No string channel names, no `any` payloads.
+
+### The invisible edge trigger
+
+The shelf stays hidden as a frameless, transparent, click-through `BrowserWindow` anchored at `x=0`. When collapsed, **all mouse events pass through to the apps beneath it** — your desktop is 100% usable. Detection happens in the Main process via a 16ms `screen.getCursorScreenPoint()` poll, because Windows transparent windows silently drop `pointermove` forwarding.
+
+A **dead-band hysteresis state machine** prevents the shelf from flickering open/closed when your cursor hovers near its boundary:
+
+| Threshold | Value | Meaning |
+|---|---|---|
+| Trigger Zone | `x ≤ 3px` | A 3-pixel strip on the left edge starts a 120ms dwell timer |
+| Keep-Open | `x ≤ 255px` | Cursor clearly inside the blade → cancel any close timer |
+| Dead Band | `255px < x ≤ 290px` | Micro-tremors here are ignored — no action |
+| Start-Close | `x > 290px` | Cursor clearly outside → 250ms grace timer begins |
+
+This is the kind of detail that separates a "looks nice" demo from a tool you can actually live with.
+
+### Multi-format clipboard engine
+
+The `ClipboardWatcher` polls the OS clipboard every 600ms. To detect *change* without re-encoding images on every tick, it computes a cheap content signature:
+
+- **Files** → joined path list
+- **Text** → the text itself
+- **Images** → an **FNV-1a hash over ~400 sampled bytes of the raw BGRA bitmap** (dimensions + hash)
+
+The previous naive approach of comparing `toPNG().length` was both expensive (re-encoded the whole image each tick) and broken (two different 1920×1080 screenshots of similar complexity produced identical byte counts → the second was silently dropped). The FNV-1a sampler is O(400) regardless of image size and has astronomically low collision probability.
+
+It also **respects privacy flags**. Clipboard formats from password managers and dictation tools — `ExcludeClipboardContentFromMonitorProcessing`, `ClipboardViewerIgnore`, `CanIncludeInClipboardHistory=0`, `KeePassClipFormat`, `com.bitwarden.concealed`, etc. — are matched case-insensitively and skipped entirely.
+
+### Native OS drag-out (OLE)
+
+Standard HTML5 drag events cannot hand file handles to external desktop software. Edge-Drop intercepts the renderer's `dragstart`, sends a fire-and-forget IPC (`item:start-drag`) to the Main process, which stages the item's content as a temp file and calls `webContents.startDrag({ file, icon })`. The OS then renders a native drag ghost and handles the drop into Photoshop, Word, Explorer, or any other app — exactly as if you had dragged the file from Explorer itself.
+
+Custom drag icons are generated on the fly: stacked card PNGs for file bundles (with a count badge), glassmorphic quote cards for text, real image thumbnails for images. Rendered via `@resvg/resvg-js`, cached, and pre-warmed on startup so the first drag is instant.
+
+### Smart deduplication, stacks, and merging
+
+When you re-copy existing content, Edge-Drop doesn't add a duplicate — it bumps the item to position 0, increments its `hitCount` badge, and refreshes its timestamp. Multi-file drag-ins and multi-image copies auto-group into expandable 3D card stacks (max 10 per stack). Drag any item card over another to merge them into a bundle; double-click to expand and drag a sub-item to the left edge to split it back out.
+
+---
+
+## Architecture
 
 ```mermaid
 graph TD
-    subgraph OS ["Operating System and Hardware"]
+    subgraph OS ["Operating System"]
         WinClip["Win32 System Clipboard"]
-        WinFS["Local Filesystem and AppData"]
-        OLE["OS OLE Drag and Drop Pipeline"]
+        WinFS["Local Filesystem / AppData"]
+        OLE["OS OLE Drag & Drop Pipeline"]
     end
 
     subgraph Main ["Electron Main Process (Node.js)"]
-        ClipWatch["ClipboardWatcher Service"]
-        Store["ItemStore and Settings Persistence"]
-        Tray["System Tray and Native Menu"]
-        WinMgr["BrowserWindow and Cursor Edge Poller"]
+        ClipWatch["ClipboardWatcher — 600ms poll, FNV-1a signatures"]
+        Store["ItemStore — atomic JSON + per-image PNG files"]
+        Tray["System Tray & Native Menu"]
+        WinMgr["BrowserWindow + 16ms Cursor Edge Poller"]
     end
 
-    subgraph Bridge ["Typed Preload Bridge (ContextIsolation)"]
-        API["contextBridge: window.edge"]
+    subgraph Bridge ["Typed Preload Bridge (contextIsolation)"]
+        API["contextBridge → window.edge"]
     end
 
-    subgraph Renderer ["React Renderer Process (UI and Motion)"]
-        Zustand["Zustand Store (appStore)"]
-        Hooks["useEdgeHover and useDragOut"]
-        UI["Panel, ItemList and Fluid Bundles"]
+    subgraph Renderer ["React Renderer"]
+        Zustand["Zustand store"]
+        Hooks["useEdgeHover · useDragOut"]
+        UI["Panel · ItemList · Fluid Bundles"]
     end
 
-    WinClip <-->|"Polls every 600ms"| ClipWatch
+    WinClip <-->|"polls every 600ms"| ClipWatch
     ClipWatch -->|"state:items IPC"| API
-    Store <-->|"JSON Atomic Read or Write"| WinFS
-    WinMgr <-->|"window:cursor-edge or window:set-interactive"| API
+    Store <-->|"atomic JSON read/write"| WinFS
+    WinMgr <-->|"window:cursor-edge · window:set-interactive"| API
     UI -->|"item:start-drag IPC"| API
-    API -->|"OLE Native Handle"| OLE
-    API <-->|"Typed Handlers and Events"| Zustand
+    API -->|"OLE native handle"| OLE
+    API <-->|"typed handlers & events"| Zustand
     Zustand <--> UI
 ```
 
----
-
-### 2. The Invisible Edge-Trigger & Hysteresis State Machine
-To remain 100% click-through when hidden while preventing visual oscillation (flickering open/closed) when the user's cursor hovers near the shelf boundary, Edge-Drop implements a dead-band hysteresis algorithm in `useEdgeHover.ts`.
+### Edge-trigger state machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Closed: Startup at x=0, Width=280px, Click-Through
-    
+    [*] --> Closed: startup, x=0, click-through
     state Closed {
         [*] --> PollingEdge
-        PollingEdge --> TriggerZone: Cursor x <= 3px in hot zone
-        TriggerZone --> DwellTimer: Linger >= 120ms
+        PollingEdge --> TriggerZone: cursor x ≤ 3px in hot zone
+        TriggerZone --> DwellTimer: linger ≥ 120ms
     }
-
     state Open {
-        [*] --> Interactive: Set interactive true
-        Interactive --> HysteresisCheck: 16ms Main Process Poll
-        HysteresisCheck --> Interactive: Cursor x <= 255px inside Blade
-        HysteresisCheck --> GraceTimer: Cursor x > 290px OR Left y-bounds
-        GraceTimer --> Interactive: Cursor returns before 250ms
+        [*] --> Interactive: setInteractive(true)
+        Interactive --> HysteresisCheck: 16ms main poll
+        HysteresisCheck --> Interactive: x ≤ 255px (inside blade)
+        HysteresisCheck --> GraceTimer: x > 290px OR left y-bounds
+        GraceTimer --> Interactive: cursor returns within 250ms
     }
-
-    Closed --> Open: DwellTimer expires
-    Open --> Closed: GraceTimer expires
+    Closed --> Open: dwell timer expires
+    Open --> Closed: grace timer expires
 ```
 
-* **Trigger Zone (`x <= 3px`)**: A 3-pixel strip on the left screen edge starts a 120ms dwell timer.
-* **Dead Band (`255px < x <= 290px`)**: Cursor micro-tremors within this buffer are ignored.
-* **Grace Margin (`x > 290px`)**: Moving 20px outside the visual shelf starts a 250ms grace timer before collapsing.
-
----
-
-### 3. Clipboard Capture & Deduplication Pipeline
-The background service `ClipboardWatcher.ts` continuously monitors the OS clipboard, computing content hashes to deduplicate entries and elevate reused items to the top of the stack.
+### Clipboard capture & dedup pipeline
 
 ```mermaid
 sequenceDiagram
     participant OS as System Clipboard
-    participant CW as ClipboardWatcher Main
-    participant IS as ItemStore Disk
-    participant Renderer as React UI
-
+    participant CW as ClipboardWatcher
+    participant IS as ItemStore (disk)
+    participant R as React UI
     loop Every 600ms
-        CW->>OS: Read available format types
-        alt Text or URL Format
-            CW->>OS: clipboard.readText
-            CW->>CW: Compute MD5 Hash Signature
-        else Image Format
-            CW->>OS: clipboard.readImage
-            CW->>CW: Extract raw buffer and PNG dimensions
-        else File Paths Format
-            CW->>OS: Read HDROP Buffer Windows or macOS
+        CW->>OS: read available formats
+        alt Files (Win32 HDROP / FileNameW)
+            CW->>OS: PowerShell GetFileDropList (bypasses single-file limit)
+        else Image
+            CW->>OS: clipboard.readImage → raw BGRA
+            CW->>CW: FNV-1a hash over ~400 sampled bytes
+        else Text / URL / HTML
+            CW->>OS: clipboard.readText / readHTML
         end
-
-        CW->>IS: Check if signature exists in Top 100 history
-        alt Duplicate Found
-            IS->>IS: Bump hitCount and update capturedAt timestamp
-            IS-->>Renderer: Broadcast updated list state:items
-        else New Content
-            IS->>IS: Prepend to history and enforce historyLimit cap
-            IS-->>Renderer: Broadcast new item list state:items
+        CW->>IS: lookup signature
+        alt Duplicate
+            IS->>IS: bump hitCount, move to front, update timestamp
+        else New
+            IS->>IS: prepend, enforce historyLimit, evict oldest unpinned
         end
+        IS-->>R: broadcast state:items
     end
 ```
 
----
-
-### 4. OS-Level OLE Native Drag & Drop Protocol
-Standard web drag events cannot pass file handles to external desktop software. Edge-Drop intercepts HTML5 drags and bridges them to Electron's native OS drag API.
+### Native drag-out flow
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Renderer as React Card
-    participant Main as Electron Main
-    participant OS as OS and External App
-
-    Note over User,OS: Drag Out Flow via OLE Native Drag
-    User->>Renderer: DragStart on item tile
-    Renderer->>Renderer: e.preventDefault to Stop HTML5 Ghost
-    Renderer->>Main: IPC send item:start-drag with request
-    Main->>Main: Resolve data and write PNG or TXT to temp dir
-    Main->>OS: webContents.startDrag with absPath and thumb icon
-    OS->>User: OS renders native drag icon and handles drop anywhere
-
-    Note over User,OS: Drag In Flow via File Drop
-    User->>Renderer: DragOver panel edge
-    Renderer->>Renderer: setDragActive true to prevent autohide
-    User->>Renderer: Drop files onto ItemList
-    Renderer->>Main: webUtils.getPathForFile
-    Main->>Main: Validate filesystem paths and bulk create bundle
-    Main-->>Renderer: Broadcast updated items
+    participant U as User
+    participant R as React Card
+    participant M as Electron Main
+    participant OS as OS / External App
+    Note over U,OS: Drag OUT — native OLE
+    U->>R: dragstart on item tile
+    R->>R: preventDefault (kill HTML5 ghost)
+    R->>M: send item:start-drag (fire & forget)
+    M->>M: stage content → temp file (.png / .txt / real paths)
+    M->>OS: webContents.startDrag({ file, icon })
+    OS->>U: native drag ghost → drop anywhere
+    Note over U,OS: Drag IN — file drop
+    U->>R: drag files onto panel edge
+    R->>M: webUtils.getPathForFile
+    M->>M: validate paths, create bundle, broadcast
 ```
 
 ---
 
-## Exhaustive Feature Specifications
+## Features
 
-### 1. Zero-Click Edge Hover & Hysteresis
-* **Frameless & Transparent**: Runs as a frameless `BrowserWindow` anchored at `x=0`. When hidden, `win.setIgnoreMouseEvents(true, { forward: true })` allows underlying desktop apps to receive all mouse clicks and gestures without obstruction.
-* **16ms Cursor Polling**: Uses `screen.getCursorScreenPoint()` in the Main process to overcome Windows transparent window DOM event limitations, ensuring 100% reliable edge detection.
-* **Configurable Hot Zones**: Users can customize the vertical height of the trigger band (25%, 40%, 60%) and the height of the visual blade (40% to 100% of screen height).
+**Zero-click edge hover**
+- Frameless, transparent, always-on-top `BrowserWindow` anchored at `x=0`
+- 100% click-through when collapsed — desktop stays fully usable
+- 16ms Main-process cursor poll (bypasses broken Windows transparent-window `pointermove` forwarding)
+- Configurable hot-zone height (25% / 40% / 60% of screen) and blade height (40% – 100%)
 
-### 2. Synchronized Elastic Overshoot Bounce
-* **Physical Spring Reveal**: When the panel opens, the outer `.blade-container` wrapper scales outward by **+5%** (`scale: [0.92, 1.05, 0.98, 1]`) before snapping back to rest.
-* **Reverse Curve Connection Flares**: Two custom SVG top and bottom connection arcs (`.flare-top` and `.flare-bottom`) sit inside the container wrapper. When the shelf bounces, the connection curves scale and stretch in perfect synchronization with the clipboard body, creating a seamless visual attachment to the monitor bezel.
+**Multi-format clipboard engine**
+- Captures plain text, URLs, rich HTML, raw images, and multi-file selections
+- Win32 `FileNameW` / HDROP parsing via PowerShell to bypass Electron's single-file limit
+- Respects password-manager and dictation-tool privacy flags (case-insensitive matching)
+- Smart deduplication — re-copies bump `hitCount` and move the item to the top
+- Incognito mode — one click suspends polling for sensitive data
 
-### 3. Multi-Format Clipboard Engine
-* **Format Agnostic**: Captures plain text, URLs, rich HTML, RTF, raw image bitmaps, and multi-file selections.
-* **Smart Deduplication**: When an existing item is copied again, Edge-Drop elevates it to position 0, updates its timestamp, and increments its badge multiplier (`hitCount` badge), preventing duplicate clutter.
-* **Incognito Mode**: A single click suspends background polling, allowing users to handle sensitive passwords or financial data without logging to history.
+**Native OS drag & drop**
+- `webContents.startDrag()` hands real file handles to external apps
+- Custom drag icons: stacked card PNGs with count badges, glassmorphic text cards, real image thumbnails
+- Drag-in: drop files onto the shelf to add them; drag-out: drop anywhere — Photoshop, Word, Explorer, Slack
+- Pre-warmed icon cache so the first drag is instant
 
-### 4. Fluid Collections & Stack Bundling
-* **Automatic Grouping**: Multi-file drag-ins or multi-image copies are automatically grouped into expandable 3D card stacks (`bundle-stack-large`) with cascading rotation and depth offsets.
-* **Ungroup by Dragging to Edge**: Want to separate items inside a stack? Double-click to expand the stack, click and hold any sub-item, and drag it to the left edge of the screen. A glowing coral indicator bar will appear on the edge; dropping the item here detaches/ungroups it from the stack into its own standalone clipboard card.
-* **Granular Sub-Item Manipulation**: Drag individual files directly out of an expanded bundle into external software, or click the split icon to instantly ungroup it.
-* **Interactive Drag Merging**: Drag any item card over another item on the shelf to instantly merge them into a unified collection bundle.
+**Fluid collections & stacks**
+- Auto-group multi-file drag-ins and multi-image copies into 3D card stacks (max 10)
+- Drag a card over another card to merge them into a bundle
+- Double-click to expand, drag a sub-item to the left edge to split it back out
+- Type-safe merge rules: images only merge with images, files with files (text never groups)
 
-### 5. High-Legibility Minimalist UI/UX
-* **Frosted macOS Aesthetics**: Built with deep black backgrounds (`#000000`), frosted glass blurs (`backdrop-filter: blur(20px)`), and minimalist hairlines (`rgba(255, 255, 255, 0.08)`).
-* **High-Fidelity Animations**: Layout transitions feature spring physics and custom motion blur filters that dynamically blur component contents while expanding or contracting, creating a premium visual flow.
-* **Scroll Gradient Masks**: Fixed top and bottom 18px linear gradient overlays smoothly fade scrolling items into black, eliminating sharp border clipping.
-* **Monochrome Styling**: Pinned items and multipliers feature clean, monochrome badges (`#ffffff` text on dark pill backgrounds) for maximum legibility and visual elegance.
+**UI / UX**
+- Frosted-glass macOS aesthetic — deep black, `backdrop-filter: blur(20px)`, hairline borders
+- Framer Motion spring physics with synchronized elastic overshoot on open
+- Custom SVG connection flares that scale with the blade
+- Scroll gradient masks top & bottom to fade items into black
+- Monochrome pin / multiplier badges for maximum legibility
+- Reduce-motion setting for accessibility
 
 ---
 
-## Technical Stack & Security Architecture
+## Security
 
-| Technology | Role & Justification |
+Edge-Drop touches the OS clipboard, the filesystem, and the Win32 OLE drag pipeline — so the security posture is intentional, not optional.
+
+| Control | Implementation |
 |---|---|
-| **Electron 30+** | Cross-platform desktop runtime providing access to OS OLE drag pipelines and native Win32 clipboard APIs. |
-| **electron-vite** | Ultra-fast build tooling separating Main, Preload, and Renderer processes with Vite HMR. |
-| **React 18 + TypeScript** | Strongly typed component hierarchy and reactive UI rendering. |
-| **Framer Motion** | Physics-based spring animations, layout transitions, and gesture animations. |
-| **Zustand** | Lightweight, selector-optimized state management with zero cascading re-renders during drag gestures. |
-
-### Enterprise Hardening Standards
-* **`nodeIntegration: false` & `contextIsolation: true`**: Preload scripts execute in a isolated context. The React renderer cannot access Node.js or OS primitives directly.
-* **Typed IPC Contracts (`shared/ipc.ts`)**: All IPC channels (`InvokeMap`, `EventMap`, `SendMap`) are statically typed; neither process can emit or receive malformed payloads.
-* **Atomic JSON Persistence**: Disk operations write to temporary files before renaming over destination files, guaranteeing zero data corruption during system crashes.
-* **Dev-Safe Startup Registration**: Startup registry modifications (`app.setLoginItemSettings`) are strictly gated by `app.isPackaged` checks, preventing local development binaries from polluting Windows Registry startup keys.
+| Process isolation | `contextIsolation: true` · `nodeIntegration: false` · `sandbox: true` on both windows |
+| Typed IPC | `shared/ipc.ts` defines `InvokeMap`, `EventMap`, `SendMap` — channel names and payload types are statically checked on both sides |
+| Privacy-aware clipboard | Honors `ExcludeClipboardContentFromMonitorProcessing`, `ClipboardViewerIgnore`, `CanIncludeInClipboardHistory`, `CanUploadToCloudClipboard`, plus 1Password / Bitwarden / KeePass concealed formats |
+| Atomic persistence | JSON index written via temp-file + rename; image bytes stored as per-id PNG files |
+| Dev-safe startup | `app.setLoginItemSettings` is gated by `app.isPackaged` — dev builds never touch the Windows Registry |
+| External links | `setWindowOpenHandler` forces all window-open requests to `shell.openExternal` — no in-app navigation |
 
 ---
 
-## Project Structure & Responsibility Matrix
+## Tech Stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Desktop runtime | **Electron 30+** | Only way to access Win32 OLE drag pipelines and native clipboard formats from JS |
+| Build tooling | **electron-vite** | Separate Main / Preload / Renderer builds with Vite HMR |
+| UI | **React 18 + TypeScript** | Strongly typed component hierarchy |
+| Animation | **Framer Motion** | Spring physics, layout transitions, gesture animations |
+| State | **Zustand** | Selector-optimized, zero cascading re-renders during drags |
+| Drag icons | **@resvg/resvg-js** | Server-side SVG → PNG rendering for custom drag ghosts |
+
+---
+
+## Project Structure
 
 ```
 Edge-Drop/
-├─ shared/                # Statically typed IPC contracts & domain models
-│  ├─ types.ts            # ClipboardItem, Bundle, Settings, and DragRequest DTOs
-│  └─ ipc.ts              # InvokeMap, EventMap, and SendMap channel definitions
-├─ electron/              # Node.js backend & OS integrations
-│  ├─ main/               # Application lifecycle, window management & OLE drag handlers
-│  │  ├─ index.ts         # Single-instance lock, IPC handler registration & startup
-│  │  ├─ window.ts        # Frameless window creation, ignoreMouseEvents & cursor polling
-│  │  ├─ tray.ts          # System tray icon & context menus
-│  │  └─ dragOut.ts       # OLE native startDrag execution & temp file resolution
-│  ├─ preload/            # Sandbox bridge exposing window.edge API
-│  │  └─ index.ts         # contextBridge exposure of typed IPC wrapper methods
-│  ├─ clipboard/          # Background clipboard monitoring services
-│  │  ├─ ClipboardWatcher.ts # 600ms polling loop & format detection
-│  │  └─ formatReaders.ts # Win32 HDROP, RTF, HTML, and bitmap extraction
-│  └─ store/              # Disk persistence & state synchronization
-│     ├─ ItemStore.ts     # Atomic JSON history persistence & deduplication logic
-│     ├─ settings.ts      # User configuration management & startup registration
-│     └─ paths.ts         # AppData directory resolution & temp folder management
-├─ src/                   # React renderer process (UI & Motion)
-│  ├─ components/         # Modular visual components
-│  │  ├─ Panel.tsx        # Outer blade wrapper, AnimatePresence & connection flares
-│  │  ├─ ItemList.tsx     # Virtualized scrolling list & drag-over auto-scroll
-│  │  ├─ ClipboardItem.tsx # Card tile, AnimatePresence expansion & subitem actions
-│  │  ├─ SearchBar.tsx    # Instant filtering & clear actions
-│  │  ├─ Settings.tsx     # Pill selectors, toggles & gradient masks
-│  │  └─ Icons.tsx        # Optimized SVG icon library
-│  ├─ hooks/              # Custom reactive hooks
-│  │  ├─ useEdgeHover.ts  # Dual-threshold hysteresis state machine (3px / 255px / 290px)
-│  │  └─ useDragOut.ts    # Native OLE drag trigger formatting
-│  ├─ store/              # Zustand appStore & selector definitions
-│  ├─ lib/                # Theme tokens & format display utilities
-│  └─ styles/             # Modular CSS architecture
-│     ├─ tokens.css       # Design system colors, radii, shadows & z-indices
-│     ├─ panel.css        # Blade wrapper, reverse curves & badges
-│     └─ settings.css     # Pill button styling & gradient overlays
+├─ shared/                 Typed IPC contracts & domain models
+│  ├─ types.ts             ClipboardItem, Bundle, Settings, DragRequest DTOs
+│  └─ ipc.ts               InvokeMap / EventMap / SendMap channel definitions
+├─ electron/               Node.js backend & OS integrations
+│  ├─ main/
+│  │  ├─ index.ts          Single-instance lock, IPC registration, startup
+│  │  ├─ window.ts         Frameless window, setIgnoreMouseEvents, cursor poll
+│  │  ├─ tray.ts           System tray icon & context menus
+│  │  └─ drag.ts           OLE startDrag, temp-file staging, icon generation
+│  ├─ preload/             Sandbox bridge exposing window.edge
+│  ├─ clipboard/
+│  │  ├─ ClipboardWatcher.ts   600ms poll loop, transient-copy rejection
+│  │  └─ formats.ts        FNV-1a signatures, Win32 HDROP, privacy-flag detection
+│  └─ store/
+│     ├─ ItemStore.ts      Atomic JSON persistence, dedup, merge/split logic
+│     ├─ settings.ts       User config & startup registration
+│     └─ paths.ts          AppData + temp directory resolution
+├─ src/                    React renderer
+│  ├─ components/          Panel, ItemList, ClipboardItem, SearchBar, Settings, Icons
+│  ├─ hooks/               useEdgeHover (hysteresis), useDragOut, useFilteredItems
+│  ├─ store/               Zustand appStore
+│  ├─ lib/                 Theme tokens, format helpers, file-type detection
+│  └─ styles/              tokens.css, panel.css, settings.css, item.css, global.css
 ```
 
 ---
 
-## Getting Started & Development
+## Roadmap
 
-### Prerequisites
-* **Node.js**: v18.0.0 or higher
-* **OS**: Windows 10/11 (Primary target for OLE drag and transparent window polling) or macOS 12+
+Edge-Drop is in **public beta**. The following are planned, in rough priority order:
 
-### Installation & Running Locally
+- [ ] **AI semantic self-organization** — embed text/URL/HTML items, auto-cluster into named groups, replace manual pinning
+- [ ] **AI summarization** — condense multi-file bundles and long HTML copies into one-line summaries + tags
+- [ ] **Multi-monitor support** — anchor to any display edge, not just primary
+- [ ] **Linux port** — replace Win32-specific paths with cross-platform equivalents
+- [ ] **Plugin SDK** — let users write custom format readers and drag-out targets
+- [ ] **Cloud sync (opt-in, E2E encrypted)** — sync pinned items across machines
+- [ ] **Search across full history** — currently capped at `historyLimit` (default 500)
 
-1. **Clone the repository & install dependencies**:
-   ```bash
-   git clone https://github.com/your-username/Edge-Drop.git
-   cd Edge-Drop
-   npm install
-   ```
+The AI features are the headline roadmap items and the reason this project is applying to OpenAI's **Codex for Open Source** program.
 
-2. **Start the development server with HMR**:
-   ```bash
-   npm run dev
-   ```
-   *Launches the Electron main process and starts the Vite renderer server with Hot Module Replacement.*
+---
 
-3. **Type-checking & Linting**:
-   ```bash
-   npm run typecheck
-   ```
+## Contributing
 
-### Building & Packaging for Production
+Edge-Drop is Apache-2.0 licensed and open to contributions. As a solo-maintained project in active beta, the best ways to help right now are:
 
-To create a standalone production executable (`.exe` installer or unpackaged binary):
+1. **File issues** for bugs, crashes, or privacy-edge-cases you hit (especially around clipboard format detection on different apps)
+2. **Test on macOS** — Windows is the primary target; macOS testing is thin
+3. **Suggest format readers** — if you copy from an app whose content Edge-Drop mis-categorizes, open an issue with the available formats list (`clipboard.availableFormats()` output)
+4. **Pick up a roadmap item** — open an issue first to discuss scope, then send a PR against a feature branch
 
+### Development workflow
 ```bash
-# Build TypeScript and bundle production assets to /out and /dist
-npm run build
-
-# Package the Windows application using electron-builder
-npm run package
+npm install
+npm run dev          # Electron + Vite HMR
+npm run typecheck    # tsc --noEmit (node + web configs)
+npm run package      # build Windows NSIS installer to /dist
 ```
-> [!NOTE]
-> If packaging fails on Windows with an `EBUSY: resource busy or locked` error, ensure that any running instances of Edge-Drop are completely closed before rebuilding (`taskkill /F /IM electron.exe /T`).
 
 ---
 
-## Additional Documentation
+## License
 
-For an even deeper technical dive into the individual subsystems, see **[FEATURES.md](file:///c:/Users/yadav/OneDrive/Desktop/projects/Edge-Drop/FEATURES.md)** in the repository root, which contains comprehensive breakdowns of the dead-band hysteresis math, OLE temporary file management, and fluid bundle memory layouts.
+Apache License 2.0 — see [LICENSE](LICENSE). Commercial and non-commercial use, modification, and distribution all permitted with attribution.
