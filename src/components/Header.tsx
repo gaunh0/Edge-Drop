@@ -6,6 +6,7 @@ import { GearIcon, CloseIcon } from './icons'
 export function Header() {
   const setSettingsOpen = useStore((s) => s.setSettingsOpen)
   const settingsOpen = useStore((s) => s.settingsOpen)
+  const updateInfo = useStore((s) => s.updateInfo)
 
   return (
     <div className="header" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', height: 40, padding: '0 14px 0 6px' }}>
@@ -54,10 +55,26 @@ export function Header() {
           width: 32,
           height: 32,
           display: 'grid',
-          placeItems: 'center'
+          placeItems: 'center',
+          position: 'relative'
         }}
       >
         {settingsOpen ? <CloseIcon /> : <GearIcon />}
+        {!settingsOpen && updateInfo?.hasUpdate && (
+          <span
+            style={{
+              position: 'absolute',
+              top: 5,
+              right: 5,
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              backgroundColor: '#f97316',
+              border: '1.5px solid #000000',
+              pointerEvents: 'none'
+            }}
+          />
+        )}
       </motion.button>
     </div>
   )

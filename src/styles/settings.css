@@ -10,6 +10,7 @@
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
 .settings-list::-webkit-scrollbar {
   display: none;
 }
@@ -21,6 +22,7 @@
   gap: 18px;
   padding: 14px 4px;
 }
+
 .setting-row.vertical {
   flex-direction: column;
   align-items: flex-start;
@@ -78,10 +80,12 @@
   transition: all 0.15s ease;
   -webkit-font-smoothing: antialiased;
 }
+
 .pill:hover:not(.active) {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.06);
 }
+
 .pill.active {
   background: #ffffff;
   color: #000000;
@@ -102,6 +106,7 @@
   padding: 0;
   transition: background 0.2s ease, border-color 0.2s ease;
 }
+
 .toggle-thumb {
   position: absolute;
   top: 3px;
@@ -112,11 +117,111 @@
   background: #d4d4d8;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease;
 }
+
 .setting-toggle.checked {
   background: #ffffff;
   border-color: #ffffff;
 }
+
 .setting-toggle.checked .toggle-thumb {
   transform: translateX(16px);
   background: #000000;
+}
+
+/* Update Prompt Banner */
+.update-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 12px;
+  background: rgba(249, 115, 22, 0.08);
+  /* 8% opacity orange background */
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  /* Subtle orange border */
+  border-radius: 10px;
+  margin: 6px 4px 10px 4px;
+}
+
+.update-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+}
+
+.update-btn {
+  width: 100%;
+  padding: 8px 0;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #000000;
+  background: #f97316;
+  /* Edge-drop orange color */
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+  text-align: center;
+}
+
+.update-btn:hover {
+  opacity: 0.9;
+}
+
+.update-btn:active {
+  transform: scale(0.98);
+}
+
+/* GitHub Star Promo Footer */
+.github-promo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  margin: 16px 4px 6px 4px;
+  text-align: center;
+}
+
+.github-promo-text {
+  font-size: 12px;
+  color: #a1a1aa;
+  line-height: 1.45;
+}
+
+.github-promo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.github-promo-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.github-promo-btn .star-icon {
+  color: #fbbf24;
+  /* yellow star */
+}
+
+.app-version-footer {
+  font-size: 11px;
+  color: #ffffff;
+  margin-top: 4px;
 }

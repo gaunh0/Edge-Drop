@@ -11,6 +11,24 @@ import { edge } from '../lib/edge'
 import type { ClipboardItemDto, Settings, DragRequest } from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
 
+function isVersionLower(current: string, latest: string): boolean {
+  const parse = (v: string) => {
+    return v
+      .replace(/^v/i, '')
+      .split('.')
+      .map((part) => parseInt(part, 10) || 0)
+  }
+  const currParts = parse(current)
+  const latParts = parse(latest)
+  for (let i = 0; i < Math.max(currParts.length, latParts.length); i++) {
+    const c = currParts[i] ?? 0
+    const l = latParts[i] ?? 0
+    if (l > c) return true
+    if (l < c) return false
+  }
+  return false
+}
+
 /** A transient user-facing notice shown as a toast. */
 export interface ToastMsg {
   id: string
@@ -36,9 +54,12 @@ interface AppState {
   /** Active toasts (auto-dismissed after a short delay). */
   toasts: ToastMsg[]
   tutorialStep: number
+  currentVersion: string
+  updateInfo: { hasUpdate: boolean; latestVersion: string; downloadUrl: string } | null
 
   /* hydration + sync */
   hydrate: () => Promise<void>
+  checkUpdate: () => Promise<void>
   setItems: (items: ClipboardItemDto[]) => void
   setSettings: (next: Settings) => void
 
@@ -75,14 +96,38 @@ export const useStore = create<AppState>((set, get) => ({
   internalDragReq: null,
   toasts: [],
   tutorialStep: 0,
+  currentVersion: '',
+  updateInfo: null,
 
   async hydrate() {
-    const { items, settings } = await edge.loadState()
+    const { items, settings, version } = await edge.loadState()
     set({ 
       items, 
       settings, 
+      currentVersion: version,
       hydrated: true
     })
+    get().checkUpdate().catch(console.error)
+  },
+
+  async checkUpdate() {
+    const current = get().currentVersion
+    if (!current) return
+    try {
+      const res = await edge.checkUpdate()
+      if (res) {
+        const hasUpdate = isVersionLower(current, res.latestVersion)
+        set({
+          updateInfo: {
+            hasUpdate,
+            latestVersion: res.latestVersion,
+            downloadUrl: res.downloadUrl
+          }
+        })
+      }
+    } catch (e) {
+      console.error('Update check failed:', e)
+    }
   },
 
   setItems: (items) => set({ items }),

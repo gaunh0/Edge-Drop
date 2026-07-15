@@ -10,7 +10,7 @@ import type { DragRequest } from './types'
 
 export interface EdgeApi {
   /* Renderer -> Main */
-  loadState: () => Promise<{ items: import('./types').ClipboardItemDto[]; settings: Settings }>
+  loadState: () => Promise<{ items: import('./types').ClipboardItemDto[]; settings: Settings; version: string }>
   setPinned: (id: string, pinned: boolean) => Promise<import('./types').ClipboardItemDto[]>
   deleteItem: (id: string) => Promise<import('./types').ClipboardItemDto[]>
   clearItems: () => Promise<import('./types').ClipboardItemDto[]>
@@ -19,6 +19,7 @@ export interface EdgeApi {
   copySubitem: (req: DragRequest) => Promise<boolean>
   pasteItem: (id: string) => Promise<boolean>
   pasteSubitem: (req: DragRequest) => Promise<boolean>
+  checkUpdate: () => Promise<{ latestVersion: string; downloadUrl: string } | null>
   /**
    * Begin a native OS drag-out. Fire-and-forget: must be called synchronously
    * from the DOM `dragstart` event, and main calls `event.sender.startDrag`.

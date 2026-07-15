@@ -151,7 +151,35 @@ export function registerIpc(): void {
   handle('state:load', () => {
     return {
       items: getStore().toDto(),
-      settings: loadSettings()
+      settings: loadSettings(),
+      version: app.getVersion()
+    }
+  })
+
+  handle('app:check-update', async () => {
+    try {
+      const response = await fetch('https://api.github.com/repos/Deepender25/Edge-Drop/releases/latest', {
+        headers: {
+          'User-Agent': 'Edge-Drop-App'
+        }
+      })
+      if (!response.ok) {
+        console.error('[IPC] app:check-update fetch failed with status:', response.status)
+        return null
+      }
+      const data = await response.json() as any
+      const latestVersion = data.tag_name || ''
+      const assets = data.assets || []
+      const exeAsset = assets.find((a: any) => a.name && a.name.endsWith('.exe'))
+      const apkAsset = assets.find((a: any) => a.name && a.name.endsWith('.apk'))
+      const downloadUrl = exeAsset?.browser_download_url || apkAsset?.browser_download_url || data.html_url || ''
+      return {
+        latestVersion,
+        downloadUrl
+      }
+    } catch (err) {
+      console.error('[IPC] app:check-update error:', err)
+      return null
     }
   })
 

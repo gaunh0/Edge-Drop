@@ -73,7 +73,7 @@ It is built for the developer and creative workflow where you constantly juggle 
 
 ### Prerequisites
 - **Node.js** v18 or higher
-- **OS**: Windows 10/11 (primary target — uses Win32 OLE drag pipelines and transparent-window cursor polling) or macOS 12+
+- **OS**: Windows 10/11 (uses Win32 OLE drag pipelines and transparent-window cursor polling)
 
 ### Run from source
 ```bash
@@ -367,7 +367,7 @@ The AI features are the headline roadmap items and the reason this project is ap
 Edge-Drop is Apache-2.0 licensed and open to contributions. As a solo-maintained project in active beta, the best ways to help right now are:
 
 1. **File issues** for bugs, crashes, or privacy-edge-cases you hit (especially around clipboard format detection on different apps)
-2. **Test on macOS** — Windows is the primary target; macOS testing is thin
+2. **macOS porting** — Currently Edge-Drop only supports Windows; contributions for a macOS port are welcome
 3. **Suggest format readers** — if you copy from an app whose content Edge-Drop mis-categorizes, open an issue with the available formats list (`clipboard.availableFormats()` output)
 4. **Pick up a roadmap item** — open an issue first to discuss scope, then send a PR against a feature branch
 

@@ -17,7 +17,7 @@ import type { ClipboardItemDto, DragRequest, MergeResult, Settings } from './typ
 
 export interface InvokeMap {
   /** Returns the full current item list + settings on startup. */
-  'state:load': { args: []; result: { items: ClipboardItemDto[]; settings: Settings } }
+  'state:load': { args: []; result: { items: ClipboardItemDto[]; settings: Settings; version: string } }
 
   /** Set an item's pinned state. */
   'item:set-pinned': { args: [id: string, pinned: boolean]; result: ClipboardItemDto[] }
@@ -61,6 +61,9 @@ export interface InvokeMap {
 
   /** Minimize the window (used by Onboarding). */
   'window:minimize': { args: []; result: void }
+
+  /** Check for application updates on GitHub releases. */
+  'app:check-update': { args: []; result: { latestVersion: string; downloadUrl: string } | null }
 }
 
 /* ------------------------------------------------------------------ */

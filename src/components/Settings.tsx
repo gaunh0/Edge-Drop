@@ -4,10 +4,28 @@ import '../styles/settings.css'
 export function Settings() {
   const settings = useStore((s) => s.settings)
   const patch = useStore((s) => s.patchSettings)
+  const updateInfo = useStore((s) => s.updateInfo)
+  const currentVersion = useStore((s) => s.currentVersion)
 
   return (
     <div className="settings-list">
-      
+      {updateInfo?.hasUpdate && (
+        <>
+          <div className="update-prompt">
+            <div className="update-text">
+              There is a new version available for this application and you can download it.
+            </div>
+            <button
+              className="update-btn"
+              onClick={() => window.open(updateInfo.downloadUrl, '_blank')}
+            >
+              Download {updateInfo.latestVersion}
+            </button>
+          </div>
+          <div className="setting-divider" />
+        </>
+      )}
+
       {/* Clear unpinned on restart */}
       <div className="setting-row">
         <div className="setting-info">
@@ -174,6 +192,34 @@ export function Settings() {
           checked={settings.launchAtLogin}
           onChange={(v) => patch({ launchAtLogin: v })}
         />
+      </div>
+
+      <div className="setting-divider" />
+
+      {/* GitHub Star Promo */}
+      <div className="github-promo">
+        <div className="github-promo-text">
+          If you like the application, please give a star to the GitHub repository - it means a lot!
+        </div>
+        <button
+          className="github-promo-btn"
+          onClick={() => window.open('https://github.com/Deepender25/Edge-Drop', '_blank')}
+        >
+          <svg
+            className="star-icon"
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="currentColor"
+            style={{ marginRight: 6 }}
+          >
+            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+          </svg>
+          Star on GitHub
+        </button>
+        <div className="app-version-footer">
+          Version {currentVersion || '0.1.0'}
+        </div>
       </div>
 
     </div>

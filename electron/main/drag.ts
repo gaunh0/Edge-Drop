@@ -247,30 +247,22 @@ function createFileStackDragIcon(paths: string[]): Electron.NativeImage {
   if (count === 0) return getFileDragIcon()
 
   const kinds = paths.slice(0, 3).map((p) => getFileKind(p))
-  const cacheKey = `stack|dark|${kinds.map((k) => k.kind).join('-')}|${count}`
+  const cacheKey = `stack|solid-black|${kinds.map((k) => k.kind).join('-')}|${count}`
   const cached = iconCache.get(cacheKey)
   if (cached && !cached.isEmpty()) {
     logDrag(`createFileStackDragIcon returning cached for ${cacheKey}`)
     return cached
   }
 
-  const defsSvg = `
-    <defs>
-      <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#26262a" />
-        <stop offset="100%" stop-color="#18181c" />
-      </linearGradient>
-    </defs>
-  `
+  const defsSvg = ''
 
   let cardsSvg = ''
   for (let i = kinds.length - 1; i >= 0; i--) {
     const info = kinds[i]
     const x = 16 - i * 4
     const y = 8 + i * 4
-    const opacity = i === 0 ? '1' : i === 1 ? '0.85' : '0.7'
     cardsSvg += `
-      <rect x="${x}" y="${y}" width="64" height="72" rx="10" fill="url(#cardBg)" fill-opacity="${opacity}" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" />
+      <rect x="${x}" y="${y}" width="64" height="72" rx="10" fill="#000000" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" />
     `
     if (i === 0) {
       cardsSvg += `
@@ -344,10 +336,6 @@ function createTextDragIcon(text: string): Electron.NativeImage {
 
   const defsSvg = `
     <defs>
-      <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#2c2c30" />
-        <stop offset="100%" stop-color="#1c1c1e" />
-      </linearGradient>
       <clipPath id="textClip">
         <rect x="48" y="0" width="200" height="72" />
       </clipPath>
@@ -359,7 +347,7 @@ function createTextDragIcon(text: string): Electron.NativeImage {
   
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
     ${defsSvg}
-    <rect x="2" y="2" width="${width - 4}" height="${height - 4}" rx="12" fill="url(#cardBg)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+    <rect x="2" y="2" width="${width - 4}" height="${height - 4}" rx="12" fill="#000000" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
     
     <!-- Accent Icon -->
     <svg x="14" y="24" width="24" height="24" viewBox="0 0 24 24">
