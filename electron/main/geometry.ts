@@ -1,4 +1,4 @@
-export type StickPosition = 'left' | 'right' | 'top'
+export type StickPosition = 'left' | 'right'
 
 export interface DisplayInfo {
   id: number
@@ -23,7 +23,7 @@ export interface StickBoundsResult {
 }
 
 export function computeStickBounds(params: StickBoundsParams): StickBoundsResult {
-  const { position, displays, displayId, windowWidth, windowHeight, currentBounds } = params
+  const { position, displays, displayId, windowWidth, currentBounds } = params
 
   let display: DisplayInfo | undefined
 
@@ -58,11 +58,7 @@ export function computeStickBounds(params: StickBoundsParams): StickBoundsResult
       y = wa.y
       height = wa.height
       break
-    case 'top':
-      x = wa.x + Math.floor((wa.width - windowWidth) / 2)
-      y = wa.y
-      height = Math.min(Math.max(windowHeight, 320), wa.height)
-      break
+
   }
 
   return { x, y, width, height, displayId: display.id }

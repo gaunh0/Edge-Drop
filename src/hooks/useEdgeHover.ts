@@ -36,6 +36,7 @@ const PANEL_WIDE = 270   // blade is 270px (var(--panel-width))
  */
 const KEEP_OPEN_PX = PANEL_WIDE - 15  // 255 — clearly inside blade
 const START_CLOSE_PX = PANEL_WIDE + 20 // 290 — 20px buffer outside the visual boundary
+const BUFFER_PX = 30                 // 30px overshoot buffer across adjacent monitors
 
 export const PANEL_LEAVE_EVENT = 'panel:leave'
 export const PANEL_ENTER_EVENT = 'panel:enter'
@@ -151,17 +152,14 @@ export function useEdgeHover(): void {
     // if the last known pointer position is genuinely outside the blade.
     const isInsideBlade = () => {
       const { x, y } = lastClient.current
-      if (x < 0 || y < 0) return true // unknown — be conservative, don't close
+      if (x < -BUFFER_PX || y < 0) return true // unknown — be conservative, don't close
       const s = settingsRef.current
-      if (s.stickPosition === 'top') {
-        const bladeH = (s.panelHeight || 0.5) * window.innerHeight
-        return y <= bladeH && x >= (window.innerWidth - PANEL_WIDE) / 2 && x <= (window.innerWidth + PANEL_WIDE) / 2
-      }
+
       if (s.stickPosition === 'right') {
-        return x >= window.innerWidth - PANEL_WIDE
+        return x >= window.innerWidth - PANEL_WIDE - BUFFER_PX && x <= window.innerWidth + BUFFER_PX
       }
       // left
-      return x <= PANEL_WIDE
+      return x >= -BUFFER_PX && x <= PANEL_WIDE + BUFFER_PX
     }
 
     const onPanelLeave = () => {
@@ -184,13 +182,12 @@ export function useEdgeHover(): void {
       lastClient.current = { x: data.x, y: data.y }
       const { stickPosition, displayWidth } = data
       const { top, bottom, midY, panelHalfH } = zone.current
-      const centerX = displayWidth / 2
-      const panelHalfW = PANEL_WIDE / 2
+
 
       switch (stickPosition) {
         case 'right': {
           const distFromRight = displayWidth - data.x
-          const inEdge = distFromRight <= TRIGGER_PX
+          const inEdge = distFromRight >= -BUFFER_PX && distFromRight <= TRIGGER_PX
           const inZone = data.y >= top && data.y <= bottom
 
           if (inEdge && inZone && !openRef.current) {
@@ -219,64 +216,22 @@ export function useEdgeHover(): void {
 
           const insideY = data.y >= midY - panelHalfH && data.y <= midY + panelHalfH
 
-          if (distFromRight <= KEEP_OPEN_PX && insideY) {
+          if (distFromRight >= -BUFFER_PX && distFromRight <= KEEP_OPEN_PX && insideY) {
             cancelClose()
             return
           }
 
-          if (distFromRight > START_CLOSE_PX || !insideY) {
+          if (distFromRight > START_CLOSE_PX || distFromRight < -BUFFER_PX || !insideY) {
             scheduleClose()
           }
           break
         }
 
-        case 'top': {
-          const inEdge = data.y <= TRIGGER_PX
-          const inZone = data.x >= centerX - panelHalfW && data.x <= centerX + panelHalfW
 
-          if (inEdge && inZone && !openRef.current) {
-            cancelClose()
-            if (dwellTimer === undefined) {
-              dwellTimer = window.setTimeout(() => {
-                dwellTimer = undefined
-                openPanel()
-              }, DWELL_MS)
-            }
-            return
-          }
-
-          if (dwellTimer !== undefined) {
-            window.clearTimeout(dwellTimer)
-            dwellTimer = undefined
-          }
-
-          if (!openRef.current) return
-
-          const now = Date.now()
-          if (now - lastSetInteractiveRef.current > 2000) {
-            lastSetInteractiveRef.current = now
-            edge.setInteractive(true)
-          }
-
-          const insideX = data.x >= centerX - panelHalfW && data.x <= centerX + panelHalfW
-          const bladeH = (settingsRef.current.panelHeight || 0.5) * data.displayHeight
-          const keepOpenY = bladeH - 15
-          const startCloseY = bladeH + 20
-
-          if (data.y <= keepOpenY && insideX) {
-            cancelClose()
-            return
-          }
-
-          if (data.y > startCloseY || !insideX) {
-            scheduleClose()
-          }
-          break
-        }
 
         // left
         default: {
-          const inEdge = data.x <= TRIGGER_PX
+          const inEdge = data.x >= -BUFFER_PX && data.x <= TRIGGER_PX
           const inZone = data.y >= top && data.y <= bottom
 
           if (inEdge && inZone && !openRef.current) {
@@ -305,12 +260,12 @@ export function useEdgeHover(): void {
 
           const insideY = data.y >= midY - panelHalfH && data.y <= midY + panelHalfH
 
-          if (data.x <= KEEP_OPEN_PX && insideY) {
+          if (data.x >= -BUFFER_PX && data.x <= KEEP_OPEN_PX && insideY) {
             cancelClose()
             return
           }
 
-          if (data.x > START_CLOSE_PX || !insideY) {
+          if (data.x > START_CLOSE_PX || data.x < -BUFFER_PX || !insideY) {
             scheduleClose()
           }
           break

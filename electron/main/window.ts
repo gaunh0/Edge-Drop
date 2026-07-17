@@ -28,7 +28,7 @@ import { APP_CONFIG } from './config'
 import { runtime } from './config'
 import { PATHS } from '../store/paths'
 import { computeStickBounds } from './geometry'
-import { loadSettings, saveSettings } from '../store/settings'
+import { loadSettings } from '../store/settings'
 
 export const PANEL_WIDTH = 384
 /** Visual width of the blade when collapsed (only used by the renderer). */
@@ -129,34 +129,32 @@ export function startCursorPoll(): void {
     if (runtime.quitting || !mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return
 
     const settings = loadSettings()
-
     const pt = screen.getCursorScreenPoint()
-    const display = screen.getDisplayNearestPoint(pt)
 
-    // Only respond on the configured stick display (or any if none set).
-    if (currentStickDisplayId !== undefined && display.id !== currentStickDisplayId) return
+    // Find the stick display (or fallback to primary)
+    const allDisplays = screen.getAllDisplays()
+    let stickDisplay = allDisplays.find(d => d.id === currentStickDisplayId)
+    if (!stickDisplay) {
+      stickDisplay = screen.getPrimaryDisplay()
+    }
 
-    const wa = display.workArea
+    const wa = stickDisplay.workArea
 
-    // Translate screen coords → window-client coords.
-    // getCursorScreenPoint() returns physical pixels on Windows; workArea is
-    // already in physical pixels when scaleFactor > 1 in Electron's screen API.
+    // Translate screen coords → stick display client coords.
     const clientX = pt.x - wa.x
     const clientY = pt.y - wa.y
 
     // Guard against garbage values that Windows occasionally sends.
-    if (clientX < -1000 || clientX > 10000 || clientY < -1000 || clientY > 10000) return
+    if (clientX < -5000 || clientX > 15000 || clientY < -5000 || clientY > 15000) return
 
     let inEdge = false
     switch (settings.stickPosition) {
       case 'left':
-        inEdge = clientX <= currentHotZoneWidth
+        inEdge = clientX >= -30 && clientX <= currentHotZoneWidth
         break
       case 'right':
-        inEdge = (wa.width - clientX) <= currentHotZoneWidth
-        break
-      case 'top':
-        inEdge = clientY <= currentHotZoneWidth && Math.abs(clientX - wa.width / 2) <= PANEL_WIDTH / 2
+        const distFromRight = wa.width - clientX
+        inEdge = distFromRight >= -30 && distFromRight <= currentHotZoneWidth
         break
     }
 
@@ -164,11 +162,9 @@ export function startCursorPoll(): void {
 
     // Stream cursor position while near the edge (opening), while open (closing),
     // or when edge state changes. The near-edge check adapts to stick position.
-    const nearEdge = settings.stickPosition === 'top'
-      ? clientY <= 450
-      : settings.stickPosition === 'right'
-        ? (wa.width - clientX) <= 450
-        : clientX <= 450
+    const nearEdge = settings.stickPosition === 'right'
+      ? (wa.width - clientX) <= 450
+      : clientX <= 450
     if (nearEdge || interactive || newState !== lastEdgeState) {
       lastEdgeState = newState
       if (!mainWindow.webContents.isDestroyed()) {
@@ -201,9 +197,7 @@ function getStickGeometry(): { x: number; y: number; width: number; height: numb
   }))
 
   const primaryHeight = screen.getPrimaryDisplay().workArea.height
-  const windowHeight = settings.stickPosition === 'top'
-    ? Math.max(320, Math.round(settings.panelHeight * primaryHeight))
-    : primaryHeight
+  const windowHeight = primaryHeight
 
   const result = computeStickBounds({
     position: settings.stickPosition,
@@ -213,10 +207,6 @@ function getStickGeometry(): { x: number; y: number; width: number; height: numb
     windowHeight,
     currentBounds: getMainWindow()?.getBounds()
   })
-
-  if (result.displayId !== settings.stickDisplayId) {
-    saveSettings({ stickDisplayId: result.displayId })
-  }
 
   currentStickDisplayId = result.displayId
   return { x: result.x, y: result.y, width: result.width, height: result.height }
@@ -259,32 +249,9 @@ export function createWindow(): BrowserWindow {
   mainWindow.setIgnoreMouseEvents(true, { forward: false })
 
   // Keep the panel glued to the primary display if the work area changes.
-  screen.on('display-metrics-changed', () => {
-    if (!mainWindow?.isVisible()) return
-    const g = getStickGeometry()
-    mainWindow.setBounds({ ...g })
-    if (detectorWindow && !detectorWindow.isDestroyed()) {
-      detectorWindow.setBounds(getDetectorBounds(g, loadSettings().stickPosition))
-    }
-  })
-
-  screen.on('display-added', () => {
-    if (!mainWindow?.isVisible()) return
-    const g = getStickGeometry()
-    mainWindow.setBounds({ ...g })
-    if (detectorWindow && !detectorWindow.isDestroyed()) {
-      detectorWindow.setBounds(getDetectorBounds(g, loadSettings().stickPosition))
-    }
-  })
-
-  screen.on('display-removed', () => {
-    if (!mainWindow?.isVisible()) return
-    const g = getStickGeometry()
-    mainWindow.setBounds({ ...g })
-    if (detectorWindow && !detectorWindow.isDestroyed()) {
-      detectorWindow.setBounds(getDetectorBounds(g, loadSettings().stickPosition))
-    }
-  })
+  screen.on('display-metrics-changed', repositionWindow)
+  screen.on('display-added', () => setTimeout(repositionWindow, 500))
+  screen.on('display-removed', () => setTimeout(repositionWindow, 500))
 
   // Respect OS-level always-on-top reordering.
   mainWindow.on('focus', () => {

@@ -43,16 +43,7 @@ describe('computeStickBounds', () => {
     expect(result).toEqual({ x: -384, y: 0, width: 384, height: 1080, displayId: 3 })
   })
 
-  it('sticks to top edge of display with negative y', () => {
-    const result = computeStickBounds({
-      position: 'top',
-      displays: [primary, secondaryNegY],
-      displayId: 4,
-      windowWidth: 384,
-      windowHeight: 600
-    })
-    expect(result).toEqual({ x: 768, y: -1080, width: 384, height: 600, displayId: 4 })
-  })
+
 
   it('falls back to nearest display when saved display is missing', () => {
     const result = computeStickBounds({

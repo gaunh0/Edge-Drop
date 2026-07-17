@@ -184,8 +184,7 @@ export function Settings() {
         <div className="setting-pills">
           {[
             { label: 'Left', val: 'left' as const },
-            { label: 'Right', val: 'right' as const },
-            { label: 'Top', val: 'top' as const }
+            { label: 'Right', val: 'right' as const }
           ].map((opt) => (
             <button
               key={opt.label}
