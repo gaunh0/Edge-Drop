@@ -3869,3 +3869,9 @@
 [2026-07-20T18:31:40.330Z] createFileStackDragIcon resvg result: isEmpty=false, size={"width":96,"height":96}
 [2026-07-20T18:31:40.331Z] createFileStackDragIcon calling Resvg for count=1
 [2026-07-20T18:31:40.481Z] createFileStackDragIcon resvg result: isEmpty=false, size={"width":96,"height":96}
+[2026-07-20T18:54:38.677Z] createFileStackDragIcon calling Resvg for count=1
+[2026-07-20T18:54:38.873Z] createFileStackDragIcon resvg result: isEmpty=false, size={"width":96,"height":96}
+[2026-07-20T18:54:38.874Z] createFileStackDragIcon calling Resvg for count=1
+[2026-07-20T18:54:39.039Z] createFileStackDragIcon resvg result: isEmpty=false, size={"width":96,"height":96}
+[2026-07-20T18:54:39.040Z] createFileStackDragIcon calling Resvg for count=1
+[2026-07-20T18:54:39.197Z] createFileStackDragIcon resvg result: isEmpty=false, size={"width":96,"height":96}

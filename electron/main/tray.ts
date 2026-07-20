@@ -78,7 +78,7 @@ export function createTray(): Tray {
   }
 
   function buildStickSubmenu(current: StickPosition): Electron.MenuItemConstructorOptions[] {
-    return (['left', 'right', 'top'] as StickPosition[]).map((pos) => ({
+    return (['left', 'right'] as StickPosition[]).map((pos) => ({
       label: pos.charAt(0).toUpperCase() + pos.slice(1),
       type: 'radio' as const,
       checked: current === pos,
