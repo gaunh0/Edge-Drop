@@ -473,6 +473,10 @@ export function registerIpc(): void {
     setInteractive(value)
   })
 
+  handle('window:set-preview-mode', (active) => {
+    import('./window').then(m => m.setPreviewMode(active))
+  })
+
   handle('window:minimize', () => {
     const win = getOnboardingWindow()
     if (win && !win.isDestroyed()) {

@@ -214,7 +214,8 @@
 }
 
 .item-main:hover .actions,
-.item-main:focus-within .actions {
+.item-main:focus-within .actions,
+.item-main.force-actions .actions {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(-50%) translateX(0) scale(1);

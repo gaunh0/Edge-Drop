@@ -56,6 +56,9 @@ interface AppState {
   tutorialStep: number
   currentVersion: string
   updateInfo: { hasUpdate: boolean; latestVersion: string; downloadUrl: string } | null
+  /** Item ID currently being previewed in the flyout. */
+  previewItemId: string | null
+  previewItemRect: { y: number; height: number } | null
 
   /* hydration + sync */
   hydrate: () => Promise<void>
@@ -68,7 +71,9 @@ interface AppState {
   setOpen: (open: boolean) => void
   setSettingsOpen: (open: boolean) => void
   setDragActive: (active: boolean) => void
+  setDragActive: (active: boolean) => void
   setInternalDragReq: (req: import('../../shared/types').DragRequest | null) => void
+  setPreviewItemId: (id: string | null, rect?: { y: number; height: number }) => void
 
   /* toasts */
   pushToast: (toast: ToastMsg) => void
@@ -98,6 +103,8 @@ export const useStore = create<AppState>((set, get) => ({
   tutorialStep: 0,
   currentVersion: '',
   updateInfo: null,
+  previewItemId: null,
+  previewItemRect: null,
 
   async hydrate() {
     const { items, settings, version } = await edge.loadState()
@@ -134,7 +141,13 @@ export const useStore = create<AppState>((set, get) => ({
   setSettings: (next) => set({ settings: next }),
 
   setQuery: (query) => set({ query }),
-  setOpen: (open) => set({ open }),
+  setOpen: (open) => {
+    set({ open })
+    if (!open) {
+      set({ previewItemId: null, previewItemRect: null })
+      edge.setPreviewMode(false)
+    }
+  },
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setDragActive: (dragActive) => set({ dragActive }),
   setInternalDragReq: (internalDragReq) => {
@@ -144,6 +157,12 @@ export const useStore = create<AppState>((set, get) => ({
       set({ internalDragReq })
     }
     edge.setInternalDrag(!!internalDragReq)
+  },
+  setPreviewItemId: (id, rect) => {
+    set({ previewItemId: id, previewItemRect: rect || null })
+    if (id) {
+      edge.setPreviewMode(true)
+    }
   },
 
   pushToast: (toast) => {

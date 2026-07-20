@@ -23,7 +23,7 @@ import { useStore } from '../store/appStore'
 import { useDragOut } from '../hooks/useDragOut'
 import { basename, formatBytes, previewText, relativeTime } from '../lib/format'
 import { getFileKind } from '../lib/fileType'
-import { CopyIcon, FileKindIcon, ImageIcon, LinkIcon, PinIcon, PinFillIcon, TrashIcon, MinusIcon, ChevronUpIcon } from './icons'
+import { CopyIcon, FileKindIcon, ImageIcon, LinkIcon, PinIcon, PinFillIcon, TrashIcon, MinusIcon, ChevronUpIcon, EyeIcon, EyeOffIcon } from './icons'
 import '../styles/item.css'
 
 /**
@@ -71,6 +71,7 @@ function ClipboardItemBase({ item }: Props) {
     if (!open) setExpanded(false)
   }, [open])
 
+  const isPreviewing = useStore((s) => s.previewItemId) === item.id
   const isBundle = (item.data.kind === 'files' && item.data.paths.length > 1) || item.data.kind === 'image-collection'
 
   const onCopy = useCallback((e: React.MouseEvent) => {
@@ -128,7 +129,7 @@ function ClipboardItemBase({ item }: Props) {
       className={`item${item.pinned ? ' pinned' : ''}${isBundle ? ' bundle' : ''}`}
     >
       <div
-        className="item-main"
+        className={`item-main${isPreviewing ? ' force-actions' : ''}`}
         data-id={item.id}
         draggable={item.data.kind !== 'text' && (!isBundle || !expanded)}
         onDragStart={(e) => handleDragStart(e, { id: item.id })}
@@ -195,17 +196,39 @@ function ClipboardItemBase({ item }: Props) {
           <button
             className={`act${item.pinned ? ' active' : ''}`}
             title={item.pinned ? 'Unpin' : 'Pin'}
-            onClick={() => togglePin(item.id, !item.pinned)}
+            onClick={(e) => {
+              e.currentTarget.blur()
+              togglePin(item.id, !item.pinned)
+            }}
           >
             {item.pinned ? <PinFillIcon /> : <PinIcon />}
           </button>
-          <button className="act" title="Copy" onClick={onCopy}>
+          <button className="act" title="Copy" onClick={(e) => {
+            e.currentTarget.blur()
+            onCopy(e)
+          }}>
             <CopyIcon />
+          </button>
+          <button
+            className="act"
+            title={isPreviewing ? "Close Preview" : "Preview"}
+            onClick={(e) => {
+              e.stopPropagation()
+              e.currentTarget.blur()
+              const rect = e.currentTarget.closest('.item-main')?.getBoundingClientRect()
+              const rectData = rect ? { y: rect.y, height: rect.height } : undefined
+              useStore.getState().setPreviewItemId(isPreviewing ? null : item.id, rectData)
+            }}
+          >
+            {isPreviewing ? <EyeIcon /> : <EyeOffIcon />}
           </button>
           <button
             className="act danger"
             title="Delete"
-            onClick={() => remove(item.id)}
+            onClick={(e) => {
+              e.currentTarget.blur()
+              remove(item.id)
+            }}
           >
             <TrashIcon />
           </button>

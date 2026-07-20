@@ -37,6 +37,7 @@ const PANEL_WIDE = 270   // blade is 270px (var(--panel-width))
 const KEEP_OPEN_PX = PANEL_WIDE - 15  // 255 — clearly inside blade
 const START_CLOSE_PX = PANEL_WIDE + 20 // 290 — 20px buffer outside the visual boundary
 const BUFFER_PX = 30                 // 30px overshoot buffer across adjacent monitors
+const PREVIEW_WIDE = 740             // Extended width when preview flyout is active
 
 export const PANEL_LEAVE_EVENT = 'panel:leave'
 export const PANEL_ENTER_EVENT = 'panel:enter'
@@ -48,6 +49,7 @@ export function useEdgeHover(): void {
   const dragActive = useStore((s) => s.dragActive)
   const setDragActive = useStore((s) => s.setDragActive)
   const internalDragReq = useStore((s) => s.internalDragReq)
+  const previewItemId = useStore((s) => s.previewItemId)
 
   // All reactive values accessed inside events kept in refs so the
   // event-listener effect never needs to restart (restarting cancels timers).
@@ -62,6 +64,12 @@ export function useEdgeHover(): void {
 
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+
+  const previewRef = useRef(previewItemId)
+  previewRef.current = previewItemId
+
+  // Access setPreviewItemId without subscribing (avoids restarting the stable effect).
+  const setPreviewItemId = useStore.getState().setPreviewItemId
 
   // Throttle the self-healing setInteractive(true) call.
   // Without this, it fires at 60Hz (every 16ms) via the cursor-edge poll,
@@ -103,6 +111,23 @@ export function useEdgeHover(): void {
     const closePanel = () => {
       if (!openRef.current) return
       if (dragActiveRef.current && !internalDragRef.current) return
+
+      // If preview is open, dismiss it first and wait for its exit
+      // animation to finish (~350ms) before collapsing the panel.
+      // This prevents both animations from fighting each other.
+      if (previewRef.current) {
+        setPreviewItemId(null)
+        window.setTimeout(() => {
+          setOpen(false)
+          if (interactiveTimer !== undefined) window.clearTimeout(interactiveTimer)
+          interactiveTimer = window.setTimeout(() => {
+            interactiveTimer = undefined
+            if (!openRef.current) edge.setInteractive(false)
+          }, 180)
+        }, 350)
+        return
+      }
+
       setOpen(false)
       if (interactiveTimer !== undefined) window.clearTimeout(interactiveTimer)
       interactiveTimer = window.setTimeout(() => {
@@ -154,12 +179,13 @@ export function useEdgeHover(): void {
       const { x, y } = lastClient.current
       if (x < -BUFFER_PX || y < 0) return true // unknown — be conservative, don't close
       const s = settingsRef.current
+      const currentPanelWide = previewRef.current ? PREVIEW_WIDE : PANEL_WIDE
 
       if (s.stickPosition === 'right') {
-        return x >= window.innerWidth - PANEL_WIDE - BUFFER_PX && x <= window.innerWidth + BUFFER_PX
+        return x >= window.innerWidth - currentPanelWide - BUFFER_PX && x <= window.innerWidth + BUFFER_PX
       }
       // left
-      return x >= -BUFFER_PX && x <= PANEL_WIDE + BUFFER_PX
+      return x >= -BUFFER_PX && x <= currentPanelWide + BUFFER_PX
     }
 
     const onPanelLeave = () => {
@@ -183,6 +209,8 @@ export function useEdgeHover(): void {
       const { stickPosition, displayWidth } = data
       const { top, bottom, midY, panelHalfH } = zone.current
 
+      const currentKeepOpenPx = previewRef.current ? PREVIEW_WIDE - 15 : KEEP_OPEN_PX
+      const currentStartClosePx = previewRef.current ? PREVIEW_WIDE + 20 : START_CLOSE_PX
 
       switch (stickPosition) {
         case 'right': {
@@ -216,12 +244,12 @@ export function useEdgeHover(): void {
 
           const insideY = data.y >= midY - panelHalfH && data.y <= midY + panelHalfH
 
-          if (distFromRight >= -BUFFER_PX && distFromRight <= KEEP_OPEN_PX && insideY) {
+          if (distFromRight >= -BUFFER_PX && distFromRight <= currentKeepOpenPx && insideY) {
             cancelClose()
             return
           }
 
-          if (distFromRight > START_CLOSE_PX || distFromRight < -BUFFER_PX || !insideY) {
+          if (distFromRight > currentStartClosePx || distFromRight < -BUFFER_PX || !insideY) {
             scheduleClose()
           }
           break
@@ -260,12 +288,12 @@ export function useEdgeHover(): void {
 
           const insideY = data.y >= midY - panelHalfH && data.y <= midY + panelHalfH
 
-          if (data.x >= -BUFFER_PX && data.x <= KEEP_OPEN_PX && insideY) {
+          if (data.x >= -BUFFER_PX && data.x <= currentKeepOpenPx && insideY) {
             cancelClose()
             return
           }
 
-          if (data.x > START_CLOSE_PX || data.x < -BUFFER_PX || !insideY) {
+          if (data.x > currentStartClosePx || data.x < -BUFFER_PX || !insideY) {
             scheduleClose()
           }
           break

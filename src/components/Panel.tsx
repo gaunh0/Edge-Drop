@@ -16,6 +16,7 @@ import { ItemList } from './ItemList'
 import { Settings } from './Settings'
 import { ToastStack } from './Toast'
 import { TrashIcon } from './icons'
+import { PreviewFlyout } from './PreviewFlyout'
 
 export function Panel() {
   const open = useStore((s) => s.open)
@@ -191,11 +192,11 @@ export function Panel() {
   let clipPath: string
   if (isRight) {
     clipPath = open
-      ? 'inset(calc(0% - 100px) 0px calc(0% - 100px) calc(0% - 100px) round 24px 0px 0px 24px)'
+      ? 'inset(calc(0% - 100px) 0px calc(0% - 100px) calc(0% - 800px) round 24px 0px 0px 24px)'
       : `inset(calc(50% - ${halfTrigger}px) 0px calc(50% - ${halfTrigger}px) calc(100% - ${settings.hotZoneWidth || 3}px) round 24px 0px 0px 24px)`
   } else {
     clipPath = open
-      ? 'inset(calc(0% - 100px) calc(0% - 100px) calc(0% - 100px) 0px round 0px 24px 24px 0px)'
+      ? 'inset(calc(0% - 100px) calc(0% - 800px) calc(0% - 100px) 0px round 0px 24px 24px 0px)'
       : `inset(calc(50% - ${halfTrigger}px) calc(100% - ${settings.hotZoneWidth || 3}px) calc(50% - ${halfTrigger}px) 0px round 0px 24px 24px 0px)`
   }
   containerStyle.clipPath = clipPath
@@ -309,6 +310,7 @@ export function Panel() {
           <DropOverlay />
           <SplitDropZone isRight={isRight} />
         </div>
+        <PreviewFlyout isRight={isRight} />
       </motion.div>
     </div>
   )

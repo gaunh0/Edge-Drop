@@ -39,6 +39,7 @@ let mainWindow: BrowserWindow | null = null
 // detector window is deliberately no longer created at runtime.
 let detectorWindow: BrowserWindow | null = null
 let interactive = false
+export let previewActive = false
 
 export let currentHotZoneWidth = 3
 export let currentStickDisplayId: number | undefined
@@ -84,6 +85,12 @@ export function setInteractive(value: boolean): void {
     mainWindow.setIgnoreMouseEvents(true, { forward: false })
     mainWindow.setAlwaysOnTop(true, 'screen-saver')
   }
+}
+
+export function setPreviewMode(active: boolean): void {
+  if (previewActive === active) return
+  previewActive = active
+  repositionWindow()
 }
 
 /**
@@ -197,12 +204,13 @@ function getStickGeometry(): { x: number; y: number; width: number; height: numb
 
   const primaryHeight = screen.getPrimaryDisplay().workArea.height
   const windowHeight = primaryHeight
+  const currentWindowWidth = previewActive ? 820 : PANEL_WIDTH
 
   const result = computeStickBounds({
     position: settings.stickPosition,
     displays: allDisplays,
     displayId: settings.stickDisplayId,
-    windowWidth: PANEL_WIDTH,
+    windowWidth: currentWindowWidth,
     windowHeight,
     currentBounds: getMainWindow()?.getBounds()
   })
